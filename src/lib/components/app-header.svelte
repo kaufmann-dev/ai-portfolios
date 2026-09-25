@@ -1,0 +1,74 @@
+<script lang="ts">
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { toggleMode } from 'mode-watcher';
+	import CircleUser from '@lucide/svelte/icons/circle-user';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import SunMoon from '@lucide/svelte/icons/sun-moon';
+	import { Button } from '$lib/components/ui/button';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { authClient } from '$lib/auth-client';
+
+	let { user }: { user: { name: string; email: string } } = $props();
+
+	const links = [
+		{ route: '/', label: 'Portfolios' },
+		{ route: '/strategies', label: 'Strategies' },
+		{ route: '/settings', label: 'Settings' }
+	] as const;
+
+	function isActive(href: string): boolean {
+		const path = page.url.pathname;
+		return href === '/' ? path === '/' || path.startsWith('/portfolios') : path.startsWith(href);
+	}
+
+	async function signOut() {
+		// Ends the local session, then Pocket ID's session (RP-initiated logout) when available.
+		const { data } = await authClient.signOut({ callbackURL: '/login', disableRedirect: true });
+		window.location.assign(data?.url ?? '/login');
+	}
+</script>
+
+<header class="border-b">
+	<div class="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:gap-6">
+		<a href={resolve('/')} class="hidden font-semibold sm:block">AI Portfolios</a>
+		<nav class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Main">
+			{#each links as link (link.route)}
+				<a
+					href={resolve(link.route)}
+					aria-current={isActive(link.route) ? 'page' : undefined}
+					class={[
+						'px-2 py-1 text-sm whitespace-nowrap',
+						isActive(link.route) ? 'font-medium' : 'text-muted-foreground hover:text-foreground'
+					]}
+				>
+					{link.label}
+				</a>
+			{/each}
+		</nav>
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger>
+				{#snippet child({ props })}
+					<Button {...props} variant="ghost" class="max-w-48 min-w-0" aria-label="Account">
+						<CircleUser />
+						<span class="hidden truncate sm:inline">{user.name || user.email}</span>
+					</Button>
+				{/snippet}
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Content align="end">
+				<DropdownMenu.Label class="truncate font-normal text-muted-foreground">
+					{user.email}
+				</DropdownMenu.Label>
+				<DropdownMenu.Separator />
+				<DropdownMenu.Item onSelect={toggleMode}>
+					<SunMoon />
+					Toggle theme
+				</DropdownMenu.Item>
+				<DropdownMenu.Item onSelect={signOut}>
+					<LogOut />
+					Sign out
+				</DropdownMenu.Item>
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+	</div>
+</header>
