@@ -55,7 +55,10 @@
 					</Button>
 				{/snippet}
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content align="end">
+			<DropdownMenu.Content
+				align="end"
+				class="w-max max-w-[calc(100vw-2rem)] min-w-(--bits-dropdown-menu-anchor-width)"
+			>
 				<DropdownMenu.Label class="truncate font-normal text-muted-foreground">
 					{user.email}
 				</DropdownMenu.Label>

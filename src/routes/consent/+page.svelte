@@ -49,7 +49,7 @@
 
 	{#if error}
 		<Alert.Root variant="destructive">
-			<Alert.Title>{error}</Alert.Title>
+			<Alert.Title class="wrap-anywhere">{error}</Alert.Title>
 		</Alert.Root>
 	{/if}
 
