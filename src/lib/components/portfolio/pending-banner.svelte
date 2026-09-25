@@ -15,17 +15,17 @@
 <Alert.Root class={pending.state === 'open' ? 'border-pending' : ''}>
 	{#if pending.state === 'open'}
 		<BellRing class="text-pending" />
-		<Alert.Title>
+		<Alert.Title class="min-w-0">
 			Place these orders before the close on {formatDate(pending.effectiveDate)},
 			{pending.closeTimeEt} ET
 		</Alert.Title>
 	{:else}
 		<Hourglass />
-		<Alert.Title>
+		<Alert.Title class="min-w-0">
 			The close on {formatDate(pending.effectiveDate)} has passed. Waiting for closing prices.
 		</Alert.Title>
 	{/if}
-	<Alert.Description class="flex flex-col gap-3">
+	<Alert.Description class="flex min-w-0 flex-col gap-3">
 		<span>
 			Submitted {formatDateTime(pending.submittedAt)}. These orders fill at the
 			{formatDate(pending.effectiveDate)} closing prices.

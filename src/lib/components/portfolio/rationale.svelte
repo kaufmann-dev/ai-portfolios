@@ -14,6 +14,6 @@
 		Rationale
 	</Collapsible.Trigger>
 	<Collapsible.Content>
-		<p class="mt-2 text-sm whitespace-pre-wrap">{text}</p>
+		<p class="mt-2 text-sm wrap-anywhere whitespace-pre-wrap">{text}</p>
 	</Collapsible.Content>
 </Collapsible.Root>
