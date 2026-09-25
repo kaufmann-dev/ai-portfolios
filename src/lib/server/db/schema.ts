@@ -1,0 +1,123 @@
+import { sql } from 'drizzle-orm';
+import {
+	boolean,
+	check,
+	date,
+	index,
+	integer,
+	numeric,
+	pgEnum,
+	pgTable,
+	primaryKey,
+	serial,
+	text,
+	timestamp,
+	uniqueIndex
+} from 'drizzle-orm/pg-core';
+
+export * from './auth-schema';
+
+const timestamps = {
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp('updated_at', { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull()
+};
+
+export const strategies = pgTable('strategies', {
+	id: serial('id').primaryKey(),
+	slug: text('slug').notNull().unique(),
+	name: text('name').notNull(),
+	content: text('content').notNull(),
+	...timestamps
+});
+
+export const portfolios = pgTable('portfolios', {
+	id: serial('id').primaryKey(),
+	slug: text('slug').notNull().unique(),
+	name: text('name').notNull(),
+	description: text('description').notNull().default(''),
+	...timestamps
+});
+
+export const rebalanceStatus = pgEnum('rebalance_status', ['pending', 'executed']);
+export const positionSide = pgEnum('position_side', ['long', 'short']);
+
+export const rebalances = pgTable(
+	'rebalances',
+	{
+		id: serial('id').primaryKey(),
+		portfolioId: integer('portfolio_id')
+			.notNull()
+			.references(() => portfolios.id, { onDelete: 'cascade' }),
+		submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
+		effectiveDate: date('effective_date').notNull(),
+		status: rebalanceStatus('status').notNull().default('pending'),
+		rationale: text('rationale'),
+		strategyId: integer('strategy_id').references(() => strategies.id, { onDelete: 'set null' }),
+		executedAt: timestamp('executed_at', { withTimezone: true })
+	},
+	(t) => [
+		// A new submission replaces the pending one for the same close; an earlier close keeps its own.
+		uniqueIndex('rebalances_portfolio_date_idx').on(t.portfolioId, t.effectiveDate),
+		index('rebalances_status_idx').on(t.status, t.effectiveDate)
+	]
+);
+
+export const rebalancePositions = pgTable(
+	'rebalance_positions',
+	{
+		rebalanceId: integer('rebalance_id')
+			.notNull()
+			.references(() => rebalances.id, { onDelete: 'cascade' }),
+		ticker: text('ticker').notNull(),
+		side: positionSide('side').notNull(),
+		shares: integer('shares').notNull()
+	},
+	(t) => [
+		primaryKey({ columns: [t.rebalanceId, t.ticker] }),
+		check('rebalance_positions_shares_positive', sql`${t.shares} > 0`)
+	]
+);
+
+/** Unadjusted daily closing prices. */
+export const priceBars = pgTable(
+	'price_bars',
+	{
+		ticker: text('ticker').notNull(),
+		date: date('date').notNull(),
+		close: numeric('close', { precision: 18, scale: 6, mode: 'number' }).notNull()
+	},
+	(t) => [primaryKey({ columns: [t.ticker, t.date] })]
+);
+
+export const corporateActionKind = pgEnum('corporate_action_kind', ['split', 'dividend']);
+
+export const corporateActions = pgTable(
+	'corporate_actions',
+	{
+		ticker: text('ticker').notNull(),
+		date: date('date').notNull(),
+		kind: corporateActionKind('kind').notNull(),
+		splitFrom: numeric('split_from', { precision: 18, scale: 6, mode: 'number' }),
+		splitTo: numeric('split_to', { precision: 18, scale: 6, mode: 'number' }),
+		cashAmount: numeric('cash_amount', { precision: 18, scale: 6, mode: 'number' })
+	},
+	(t) => [primaryKey({ columns: [t.ticker, t.date, t.kind] })]
+);
+
+/** Trading sessions whose market-wide closes and corporate actions have been fetched. */
+export const marketSessions = pgTable('market_sessions', {
+	date: date('date').primaryKey(),
+	hadData: boolean('had_data').notNull(),
+	fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+export const tickers = pgTable('tickers', {
+	ticker: text('ticker').primaryKey(),
+	name: text('name').notNull(),
+	type: text('type'),
+	active: boolean('active').notNull(),
+	checkedAt: timestamp('checked_at', { withTimezone: true }).defaultNow().notNull()
+});
