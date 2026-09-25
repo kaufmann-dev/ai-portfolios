@@ -212,6 +212,29 @@ describe('valuePortfolio', () => {
 		expect(v.series[1].pnl).toBeCloseTo(0);
 	});
 
+	it('lists unpriced targets of the latest rebalance only', () => {
+		const target = [{ ticker: 'NEW', side: 'long' as const, shares: 1 }];
+		const v = valuePortfolio({
+			rebalances: [
+				{ id: 1, effectiveDate: D[0], positions: target },
+				{ id: 2, effectiveDate: D[1], positions: target }
+			],
+			bars: new Map([['NEW', new Map([[D[1], 10]])]]),
+			actions: [],
+			sessions: D.slice(0, 2)
+		});
+		expect(v.unpriced).toEqual([]);
+		expect(v.holdings.map((h) => [h.ticker, h.openedOn])).toEqual([['NEW', D[1]]]);
+
+		const stuck = valuePortfolio({
+			rebalances: [{ id: 1, effectiveDate: D[0], positions: target }],
+			bars: new Map(),
+			actions: [],
+			sessions: D.slice(0, 2)
+		});
+		expect(stuck.unpriced).toEqual(['NEW']);
+	});
+
 	it('carries the last close forward and flags stale holdings', () => {
 		const v = valuePortfolio({
 			rebalances: [
