@@ -4,7 +4,9 @@ A private website that hosts stock portfolios managed by AI agents through a bui
 You prompt your AI ("use the ai-portfolios MCP server to manage portfolio `growth` with strategy
 `momentum-v1`"). The AI reads the portfolio's holdings, history, and performance, and fetches the
 hosted strategy. It then submits the complete new target portfolio: tickers, whole share counts,
-and long or short.
+long or short, and a rationale for the whole portfolio. Each newly opened position also records a
+thesis and an exit plan, which stay attached to the holding so the next evaluation can judge
+whether to keep or close it.
 
 - **Closing prices only.** A submission fills at the closing price of the first U.S. market close
   after it arrives. Until that close, the portfolio page lists the orders to place (buy, sell,
@@ -104,16 +106,16 @@ claude mcp add --transport http ai-portfolios https://portfolios.example.com/mcp
 codex mcp add ai-portfolios --url https://portfolios.example.com/mcp && codex mcp login ai-portfolios
 ```
 
-| Tool               | Purpose                                                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `list_portfolios`  | Portfolios with performance and pending-rebalance counts                                                      |
-| `create_portfolio` | Create an empty portfolio                                                                                     |
-| `get_portfolio`    | Holdings, metrics, pending rebalances with orders, recent rebalances with fills and rationale, weekly series  |
-| `submit_portfolio` | Submit the complete target portfolio (`ticker`, whole `shares`, `side`), with optional rationale and strategy |
-| `get_prices`       | Latest price and previous close, for sizing whole-share positions                                             |
-| `validate_tickers` | Check that tickers are active U.S. stocks or ETFs                                                             |
-| `list_strategies`  | Hosted strategies                                                                                             |
-| `get_strategy`     | Full text of a hosted strategy                                                                                |
+| Tool               | Purpose                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `list_portfolios`  | Portfolios with performance and pending-rebalance counts                                                     |
+| `create_portfolio` | Create an empty portfolio                                                                                    |
+| `get_portfolio`    | Holdings with thesis and exit plan, current rationale, metrics, pending and recent rebalances, weekly series |
+| `submit_portfolio` | Submit the complete target portfolio with a required rationale; new positions need a `thesis` and `exit`     |
+| `get_prices`       | Latest price and previous close, for sizing whole-share positions                                            |
+| `validate_tickers` | Check that tickers are active U.S. stocks or ETFs                                                            |
+| `list_strategies`  | Hosted strategies                                                                                            |
+| `get_strategy`     | Full text of a hosted strategy                                                                               |
 
 Strategies are written and edited on the Strategies page.
 

@@ -38,5 +38,25 @@ export const positionSchema = z.object({
 		.transform((t) => t.toUpperCase())
 		.pipe(z.string().regex(TICKER_PATTERN, 'Not a valid ticker symbol.')),
 	shares: z.number().int('Shares must be a whole number.').positive('Shares must be at least 1.'),
-	side: z.enum(['long', 'short'])
+	side: z.enum(['long', 'short']),
+	thesis: z
+		.string()
+		.trim()
+		.min(1)
+		.max(4000)
+		.optional()
+		.describe(
+			'Why this position is held. Required when opening a position or flipping its side; ' +
+				'omit it to keep the thesis recorded for a position already held on the same side.'
+		),
+	exit: z
+		.string()
+		.trim()
+		.min(1)
+		.max(2000)
+		.optional()
+		.describe(
+			'When or under what conditions to close the position (target, stop, catalyst, date). ' +
+				'Required and carried forward like thesis.'
+		)
 });

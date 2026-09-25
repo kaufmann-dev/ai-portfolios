@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
 import { slugify } from '$lib/schemas';
 import { db } from '../db';
 import {
@@ -36,6 +36,19 @@ interface StrategyRef {
 	name: string;
 }
 
+/** A target position with the reasoning recorded for it. */
+export interface TargetPosition extends Position {
+	thesis: string;
+	exit: string;
+}
+
+export interface HeldPosition extends Holding {
+	thesis: string;
+	exit: string;
+	/** Effective date of the rebalance that opened the position on its current side. */
+	openedOn: string;
+}
+
 export interface PendingRebalance {
 	id: number;
 	effectiveDate: string;
@@ -46,9 +59,9 @@ export interface PendingRebalance {
 	/** `open` until the close; then `awaiting_prices` until closing prices are fetched. */
 	state: 'open' | 'awaiting_prices';
 	submittedAt: string;
-	rationale: string | null;
+	rationale: string;
 	strategy: StrategyRef | null;
-	positions: Position[];
+	positions: TargetPosition[];
 	orders: Order[];
 }
 
@@ -60,16 +73,16 @@ export interface ExecutedRebalanceView {
 	id: number;
 	effectiveDate: string;
 	submittedAt: string;
-	rationale: string | null;
+	rationale: string;
 	strategy: StrategyRef | null;
-	positions: Position[];
+	positions: TargetPosition[];
 	orders: ExecutedOrder[];
 }
 
 export interface PortfolioView {
 	portfolio: Portfolio;
 	metrics: Metrics;
-	holdings: Holding[];
+	holdings: HeldPosition[];
 	series: SeriesPoint[];
 	pending: PendingRebalance[];
 	history: ExecutedRebalanceView[];
@@ -147,9 +160,9 @@ type RebalanceRow = {
 	effectiveDate: string;
 	submittedAt: Date;
 	status: 'pending' | 'executed';
-	rationale: string | null;
+	rationale: string;
 	strategy: StrategyRef | null;
-	positions: Position[];
+	positions: TargetPosition[];
 };
 
 async function loadRebalances(portfolioIds: number[]): Promise<Map<number, RebalanceRow[]>> {
@@ -197,7 +210,13 @@ async function loadRebalances(portfolioIds: number[]): Promise<Map<number, Rebal
 					: null,
 			positions: positions
 				.filter((p) => p.rebalanceId === row.id)
-				.map((p) => ({ ticker: p.ticker, side: p.side, shares: p.shares }))
+				.map((p) => ({
+					ticker: p.ticker,
+					side: p.side,
+					shares: p.shares,
+					thesis: p.thesis,
+					exit: p.exit
+				}))
 		});
 	}
 	return byPortfolio;
@@ -248,6 +267,22 @@ function buildView(
 		sessions: market.sessions
 	});
 
+	const targets = new Map<string, TargetPosition>();
+	const openedOn = new Map<string, string>();
+	for (const r of executed) {
+		for (const p of r.positions) {
+			if (targets.get(p.ticker)?.side !== p.side) openedOn.set(p.ticker, r.effectiveDate);
+		}
+		targets.clear();
+		for (const p of r.positions) targets.set(p.ticker, p);
+	}
+	const holdings: HeldPosition[] = valuation.holdings.map((h) => ({
+		...h,
+		thesis: targets.get(h.ticker)!.thesis,
+		exit: targets.get(h.ticker)!.exit,
+		openedOn: openedOn.get(h.ticker)!
+	}));
+
 	let base: Position[] = valuation.holdings.map((h) => ({
 		ticker: h.ticker,
 		side: h.side,
@@ -291,7 +326,7 @@ function buildView(
 	return {
 		portfolio,
 		metrics: valuation.metrics,
-		holdings: valuation.holdings,
+		holdings,
 		series: valuation.series,
 		pending,
 		history,
@@ -323,22 +358,31 @@ export async function listPortfolioSummaries(now = new Date()): Promise<Portfoli
 	}));
 }
 
+export interface PositionInput extends Position {
+	thesis?: string;
+	exit?: string;
+}
+
 export interface SubmitInput {
 	portfolio: string;
-	positions: Position[];
-	rationale?: string | null;
+	positions: PositionInput[];
+	rationale: string;
 	strategy?: string | null;
 }
 
 /**
  * Records a complete target portfolio that fills at the first close after `now`. It replaces a
  * pending submission for the same close; a pending rebalance whose close already passed is kept.
+ * A position already in the previous target on the same side inherits its thesis and exit plan
+ * unless they are restated; a newly opened or flipped position must state both.
  */
 export async function submitPortfolio(
 	input: SubmitInput,
 	now = new Date()
 ): Promise<PendingRebalance> {
 	const portfolio = await getPortfolio(input.portfolio);
+	const rationale = input.rationale.trim();
+	if (!rationale) throw new ServiceError('Explain the portfolio as a whole in the rationale.');
 
 	const seen = new Set<string>();
 	const duplicates = new Set<string>();
@@ -376,26 +420,55 @@ export async function submitPortfolio(
 					eq(rebalances.status, 'pending')
 				)
 			);
+		const previous = await previousTarget(tx, portfolio.id);
+		const positions = input.positions.map((p) => {
+			const held = previous.get(p.ticker);
+			const inherited = held?.side === p.side ? held : undefined;
+			return {
+				...p,
+				thesis: p.thesis?.trim() || inherited?.thesis || '',
+				exit: p.exit?.trim() || inherited?.exit || ''
+			};
+		});
+		const missing = positions.filter((p) => !p.thesis || !p.exit).map((p) => p.ticker);
+		if (missing.length) {
+			throw new ServiceError(
+				`New or flipped positions need a thesis and an exit plan: ${missing.join(', ')}.`
+			);
+		}
+
 		const [created] = await tx
 			.insert(rebalances)
-			.values({
-				portfolioId: portfolio.id,
-				submittedAt: now,
-				effectiveDate,
-				rationale: input.rationale?.trim() || null,
-				strategyId
-			})
+			.values({ portfolioId: portfolio.id, submittedAt: now, effectiveDate, rationale, strategyId })
 			.returning({ id: rebalances.id });
-		if (input.positions.length) {
+		if (positions.length) {
 			await tx
 				.insert(rebalancePositions)
-				.values(input.positions.map((p) => ({ ...p, rebalanceId: created.id })));
+				.values(positions.map((p) => ({ ...p, rebalanceId: created.id })));
 		}
 		return created.id;
 	});
 
 	const view = await getPortfolioView(portfolio.slug, now);
 	return view.pending.find((p) => p.id === id)!;
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Target positions of the latest remaining rebalance, executed or still pending. */
+async function previousTarget(tx: Tx, portfolioId: number): Promise<Map<string, TargetPosition>> {
+	const [latest] = await tx
+		.select({ id: rebalances.id })
+		.from(rebalances)
+		.where(eq(rebalances.portfolioId, portfolioId))
+		.orderBy(desc(rebalances.effectiveDate))
+		.limit(1);
+	if (!latest) return new Map();
+	const rows = await tx
+		.select()
+		.from(rebalancePositions)
+		.where(eq(rebalancePositions.rebalanceId, latest.id));
+	return new Map(rows.map((p) => [p.ticker, p]));
 }
 
 /** Deletes a pending rebalance whose close has not happened yet. */
