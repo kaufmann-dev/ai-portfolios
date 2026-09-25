@@ -1,11 +1,13 @@
 <script lang="ts">
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import SignedValue from '$lib/components/signed-value.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Table from '$lib/components/ui/table';
 	import { formatDate, formatMoney, formatPrice, formatShares } from '$lib/format';
-	import type { Holding } from '$lib/server/portfolio/valuation';
+	import type { HeldPosition } from '$lib/server/services/portfolios';
 
-	let { holdings }: { holdings: Holding[] } = $props();
+	let { holdings }: { holdings: HeldPosition[] } = $props();
+	let expanded = $state<Record<string, boolean>>({});
 </script>
 
 {#if holdings.length === 0}
@@ -26,7 +28,18 @@
 		<Table.Body>
 			{#each holdings as h (h.ticker)}
 				<Table.Row>
-					<Table.Cell class="font-medium">{h.ticker}</Table.Cell>
+					<Table.Cell class="font-medium">
+						<button
+							type="button"
+							class="flex items-center gap-1"
+							aria-expanded={expanded[h.ticker] ?? false}
+							aria-controls="thesis-{h.ticker}"
+							onclick={() => (expanded[h.ticker] = !expanded[h.ticker])}
+						>
+							<ChevronRight class={['size-4', expanded[h.ticker] && 'rotate-90']} />
+							{h.ticker}
+						</button>
+					</Table.Cell>
 					<Table.Cell>
 						<Badge variant={h.side === 'long' ? 'secondary' : 'outline'}>
 							{h.side === 'long' ? 'Long' : 'Short'}
@@ -48,6 +61,20 @@
 						<span class="block text-xs"><SignedValue value={h.unrealizedPct} /></span>
 					</Table.Cell>
 				</Table.Row>
+				{#if expanded[h.ticker]}
+					<Table.Row id="thesis-{h.ticker}" class="hover:bg-transparent">
+						<Table.Cell colspan={7} class="whitespace-normal">
+							<dl class="grid max-w-prose gap-x-4 gap-y-2 pl-5 text-sm sm:grid-cols-[auto_1fr]">
+								<dt class="text-muted-foreground">Opened</dt>
+								<dd>{formatDate(h.openedOn)}</dd>
+								<dt class="text-muted-foreground">Thesis</dt>
+								<dd class="whitespace-pre-wrap">{h.thesis}</dd>
+								<dt class="text-muted-foreground">Exit plan</dt>
+								<dd class="whitespace-pre-wrap">{h.exit}</dd>
+							</dl>
+						</Table.Cell>
+					</Table.Row>
+				{/if}
 			{/each}
 		</Table.Body>
 	</Table.Root>

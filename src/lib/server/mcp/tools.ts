@@ -20,7 +20,9 @@ performance is P&L relative to gross exposure, compounded daily.
 
 Typical workflow: list_portfolios -> get_portfolio (holdings, performance, history, pending
 rebalances) -> get_strategy when the prompt names one -> get_prices to size positions ->
-submit_portfolio with the COMPLETE target portfolio. The submission fills at the first market close
+submit_portfolio with the COMPLETE target portfolio. Every holding carries the thesis and exit plan
+recorded when it was opened; weigh them against what has happened since before holding, resizing,
+or closing it. Restate them only when your reasoning changes. The submission fills at the first market close
 after it is received; submitting again before that close replaces it.`;
 
 function round(value: number | null, digits: number): number | null {
@@ -84,7 +86,8 @@ function portfolioOut(view: PortfolioView, historyLimit: number) {
 		portfolio: {
 			slug: view.portfolio.slug,
 			name: view.portfolio.name,
-			description: view.portfolio.description
+			description: view.portfolio.description,
+			currentRationale: view.history[0]?.rationale ?? null
 		},
 		performance: metricsOut(view),
 		holdings: view.holdings.map((h) => ({
@@ -96,10 +99,17 @@ function portfolioOut(view: PortfolioView, historyLimit: number) {
 			lastPriceDate: h.lastPriceDate,
 			marketValue: round(h.marketValue, 2),
 			unrealizedPnl: round(h.unrealizedPnl, 2),
-			unrealizedPct: round(h.unrealizedPct, 6)
+			unrealizedPct: round(h.unrealizedPct, 6),
+			openedOn: h.openedOn,
+			thesis: h.thesis,
+			exit: h.exit
 		})),
 		pendingRebalances: view.pending,
-		recentRebalances: view.history.slice(0, historyLimit),
+		// Theses of held positions are on holdings; history keeps only the sizes.
+		recentRebalances: view.history.slice(0, historyLimit).map((r) => ({
+			...r,
+			positions: r.positions.map((p) => ({ ticker: p.ticker, side: p.side, shares: p.shares }))
+		})),
 		weeklyPerformance: weekly(view.series)
 	};
 }
@@ -182,8 +192,9 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 			{
 				title: 'Get portfolio',
 				description:
-					'Returns current holdings (split-adjusted, with average cost and last close), performance ' +
-					'metrics, pending rebalances with their orders, recent executed rebalances with fill ' +
+					'Returns current holdings (split-adjusted, with average cost, last close, open date, and ' +
+					'their current thesis and exit plan), the current portfolio rationale, ' +
+					'performance metrics, pending rebalances with their orders, recent executed rebalances with fill ' +
 					'prices and rationale, and a weekly performance series. An empty portfolio has no ' +
 					'holdings yet and needs a first allocation.',
 				inputSchema: z.object({
@@ -212,15 +223,21 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 					'empty list closes everything. Shares are whole numbers (no fractions); side is long or ' +
 					'short. The rebalance fills at the closing price of the first U.S. market close after ' +
 					'submission. Submitting again before that close replaces the pending submission. ' +
+					'Every new or side-flipped position needs a thesis and an exit plan; a position kept ' +
+					'on the same side inherits its recorded ones unless restated. ' +
 					'Returns the fill date and the orders needed to reach the target.',
 				inputSchema: z.object({
 					portfolio: portfolioRef,
 					positions: z.array(positionSchema).max(500),
 					rationale: z
 						.string()
+						.trim()
+						.min(1)
 						.max(20_000)
-						.optional()
-						.describe('Why these positions were chosen; shown in the portfolio history.'),
+						.describe(
+							'The thesis for the portfolio as a whole and what changed in this rebalance, ' +
+								'including why any positions were closed.'
+						),
 					strategy: z
 						.string()
 						.optional()

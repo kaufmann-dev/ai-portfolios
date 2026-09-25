@@ -54,7 +54,7 @@ export const rebalances = pgTable(
 		submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
 		effectiveDate: date('effective_date').notNull(),
 		status: rebalanceStatus('status').notNull().default('pending'),
-		rationale: text('rationale'),
+		rationale: text('rationale').notNull(),
 		strategyId: integer('strategy_id').references(() => strategies.id, { onDelete: 'set null' }),
 		executedAt: timestamp('executed_at', { withTimezone: true })
 	},
@@ -73,7 +73,11 @@ export const rebalancePositions = pgTable(
 			.references(() => rebalances.id, { onDelete: 'cascade' }),
 		ticker: text('ticker').notNull(),
 		side: positionSide('side').notNull(),
-		shares: integer('shares').notNull()
+		shares: integer('shares').notNull(),
+		/** Why the position is held; carried forward from the previous target when not restated. */
+		thesis: text('thesis').notNull(),
+		/** When or under what conditions the position should be closed; carried forward like `thesis`. */
+		exit: text('exit').notNull()
 	},
 	(t) => [
 		primaryKey({ columns: [t.rebalanceId, t.ticker] }),
