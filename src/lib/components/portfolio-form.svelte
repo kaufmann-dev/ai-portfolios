@@ -30,7 +30,7 @@
 	const { form: formData, enhance, submitting } = form;
 </script>
 
-<form method="POST" {action} {@attach fromAction(enhance)} class="flex flex-col gap-4">
+<form method="POST" {action} {@attach fromAction(enhance)} class="flex min-w-0 flex-col gap-4">
 	<Form.Field {form} name="name">
 		<Form.Control>
 			{#snippet children({ props })}

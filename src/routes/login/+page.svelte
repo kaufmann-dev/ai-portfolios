@@ -38,7 +38,7 @@
 	{#if data.failed || error}
 		<Alert.Root variant="destructive">
 			<Alert.Title>Sign-in failed</Alert.Title>
-			<Alert.Description
+			<Alert.Description class="wrap-anywhere"
 				>{error ?? 'Pocket ID did not complete the sign-in. Try again.'}</Alert.Description
 			>
 		</Alert.Root>

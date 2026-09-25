@@ -26,7 +26,7 @@
 			</p>
 		</div>
 		<CopyField value={data.mcpUrl} label="MCP URL" />
-		<dl class="grid gap-4 text-sm">
+		<dl class="grid grid-cols-1 gap-4 text-sm">
 			<div class="flex flex-col gap-2">
 				<dt class="font-medium">Claude Code</dt>
 				<dd class="flex flex-col gap-2">
