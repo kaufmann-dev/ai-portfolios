@@ -96,6 +96,7 @@ other MCP clients connect with just the URL:
 | `portfolios:read`  | `list_portfolios`, `get_portfolio`, `get_prices`, `validate_tickers` |
 | `portfolios:write` | `create_portfolio`, `submit_portfolio`                               |
 | `strategies:read`  | `list_strategies`, `get_strategy`                                    |
+| `strategies:write` | `create_strategy`, `update_strategy`                                 |
 
 A token only lists the tools its scopes allow. Calling another tool returns `403` with an
 `insufficient_scope` challenge, so the client can ask for more access. Settings lists connected
@@ -116,8 +117,10 @@ codex mcp add ai-portfolios --url https://portfolios.example.com/mcp && codex mc
 | `validate_tickers` | Check that tickers are active U.S. stocks or ETFs                                                               |
 | `list_strategies`  | Hosted strategies                                                                                               |
 | `get_strategy`     | Full text of a hosted strategy                                                                                  |
+| `create_strategy`  | Host a new strategy                                                                                             |
+| `update_strategy`  | Change a strategy's name, slug, or text                                                                         |
 
-Strategies are written and edited on the Strategies page.
+Strategies are written and edited on the Strategies page or through the strategy tools.
 
 ## Coolify Deployment
 

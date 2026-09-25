@@ -1,7 +1,7 @@
 import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
 import { TOOL_SCOPES } from './scopes';
 import { z } from 'zod';
-import { positionSchema, TICKER_PATTERN } from '$lib/schemas';
+import { positionSchema, strategySchema, TICKER_PATTERN } from '$lib/schemas';
 import { ServiceError } from '../services/errors';
 import {
 	createPortfolio,
@@ -10,7 +10,13 @@ import {
 	submitPortfolio,
 	type PortfolioView
 } from '../services/portfolios';
-import { getStrategy, listStrategies } from '../services/strategies';
+import {
+	createStrategy,
+	getStrategy,
+	listStrategies,
+	updateStrategy,
+	type Strategy
+} from '../services/strategies';
 import { getQuotes, validateTickers } from '../services/tickers';
 import type { SeriesPoint } from '../portfolio/valuation';
 
@@ -122,6 +128,12 @@ function portfolioOut(view: PortfolioView, historyLimit: number, closedLimit: nu
 		weeklyPerformance: weekly(view.series)
 	};
 }
+
+function strategyOut(s: Strategy) {
+	return { slug: s.slug, name: s.name, updatedAt: s.updatedAt.toISOString() };
+}
+
+const strategyRef = z.string().min(1).describe('Strategy slug or exact name.');
 
 const portfolioRef = z
 	.string()
@@ -313,14 +325,7 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 				description: 'Lists the hosted investment strategies (slug and name).',
 				annotations: { readOnlyHint: true }
 			},
-			() =>
-				guard(async () =>
-					(await listStrategies()).map((s) => ({
-						slug: s.slug,
-						name: s.name,
-						updatedAt: s.updatedAt.toISOString()
-					}))
-				)
+			() => guard(async () => (await listStrategies()).map(strategyOut))
 		);
 
 	if (allowed('get_strategy'))
@@ -330,20 +335,59 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 				title: 'Get strategy',
 				description:
 					'Returns the full text of a hosted strategy. Follow it when managing a portfolio.',
-				inputSchema: z.object({
-					strategy: z.string().min(1).describe('Strategy slug or exact name.')
-				}),
+				inputSchema: z.object({ strategy: strategyRef }),
 				annotations: { readOnlyHint: true }
 			},
 			({ strategy }) =>
 				guard(async () => {
 					const s = await getStrategy(strategy);
-					return {
-						slug: s.slug,
-						name: s.name,
-						updatedAt: s.updatedAt.toISOString(),
-						content: s.content
-					};
+					return { ...strategyOut(s), content: s.content };
+				})
+		);
+
+	if (allowed('create_strategy'))
+		server.registerTool(
+			'create_strategy',
+			{
+				title: 'Create strategy',
+				description:
+					'Hosts a new investment strategy that agents follow when managing portfolios. Check ' +
+					'list_strategies first to avoid duplicates.',
+				inputSchema: strategySchema.extend({
+					slug: strategySchema.shape.slug.describe(
+						'Optional URL slug; derived from the name when omitted.'
+					),
+					content: strategySchema.shape.content.describe('The full strategy text.')
+				})
+			},
+			(input) => guard(async () => strategyOut(await createStrategy(input)))
+		);
+
+	if (allowed('update_strategy'))
+		server.registerTool(
+			'update_strategy',
+			{
+				title: 'Update strategy',
+				description:
+					'Changes a hosted strategy. Omitted fields keep their current value; content replaces ' +
+					'the whole text.',
+				inputSchema: z.object({
+					strategy: strategyRef,
+					name: strategySchema.shape.name.optional(),
+					// Without the schema's '' default, so an omitted slug keeps the current one.
+					slug: strategySchema.shape.slug.unwrap().optional(),
+					content: strategySchema.shape.content.optional()
+				})
+			},
+			({ strategy, name, slug, content }) =>
+				guard(async () => {
+					const current = await getStrategy(strategy);
+					const updated = await updateStrategy(current.id, {
+						name: name ?? current.name,
+						slug: slug ?? current.slug,
+						content: content ?? current.content
+					});
+					return strategyOut(updated);
 				})
 		);
 
