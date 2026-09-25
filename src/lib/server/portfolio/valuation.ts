@@ -43,7 +43,27 @@ export interface Holding {
 	marketValue: number;
 	unrealizedPnl: number;
 	unrealizedPct: number;
+	/** Share of the portfolio's gross exposure. */
+	weight: number;
+	/** Effective date of the rebalance that opened the position on its current side. */
+	openedOn: string;
 	stale: boolean;
+}
+
+/** A position held from its opening until it was fully closed or flipped to the other side. */
+export interface ClosedPosition {
+	ticker: string;
+	side: Side;
+	openedOn: string;
+	closedOn: string;
+	/** Split-adjusted average cost when the last shares were closed. */
+	avgCost: number;
+	/** Price at which the last shares were closed. */
+	exitPrice: number;
+	/** Price P&L of every share sold or covered plus dividends, over the position's life. */
+	realizedPnl: number;
+	/** `realizedPnl` per dollar of shares bought or shorted into the position. */
+	realizedPct: number;
 }
 
 export interface Metrics {
@@ -63,6 +83,8 @@ export interface Metrics {
 export interface Valuation {
 	series: SeriesPoint[];
 	holdings: Holding[];
+	/** Most recently closed first. */
+	closed: ClosedPosition[];
 	metrics: Metrics;
 	/** Fill prices per rebalance id: ticker -> close on the effective date. */
 	fills: Map<number, Map<string, number>>;
@@ -76,6 +98,10 @@ interface OpenPosition {
 	side: Side;
 	shares: number;
 	avgCost: number;
+	openedOn: string;
+	/** Dollars of shares bought or shorted into the position. */
+	invested: number;
+	realized: number;
 }
 
 interface LastPrice {
@@ -108,12 +134,24 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 	const fills = new Map<number, Map<string, number>>();
 	const orders = new Map<number, Order[]>();
 	const unpriced = new Set<string>();
+	const closed: ClosedPosition[] = [];
 	const series: SeriesPoint[] = [];
 	let index = 1;
 	let cumPnl = 0;
 	let prevGross = 0;
 
 	const closeOn = (ticker: string, date: string) => input.bars.get(ticker)?.get(date);
+	const recordClose = (ticker: string, p: OpenPosition, price: number, day: string) =>
+		closed.push({
+			ticker,
+			side: p.side,
+			openedOn: p.openedOn,
+			closedOn: day,
+			avgCost: p.avgCost,
+			exitPrice: price,
+			realizedPnl: p.realized,
+			realizedPct: p.invested > 0 ? p.realized / p.invested : 0
+		});
 
 	for (const day of sessions) {
 		let pnl = 0;
@@ -129,7 +167,9 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 				const prev = last.get(action.ticker);
 				if (prev) prev.close /= ratio;
 			} else if (action.kind === 'dividend' && action.cashAmount) {
-				pnl += sign(position.side) * position.shares * action.cashAmount;
+				const cash = sign(position.side) * position.shares * action.cashAmount;
+				pnl += cash;
+				position.realized += cash;
 			}
 		}
 
@@ -143,8 +183,16 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 
 		// Fractional shares left by a split are settled in cash at today's close.
 		for (const [ticker, position] of open) {
-			position.shares = Math.floor(position.shares + 1e-9);
-			if (position.shares === 0) open.delete(ticker);
+			const whole = Math.floor(position.shares + 1e-9);
+			if (whole === position.shares) continue;
+			const price = last.get(ticker)?.close ?? position.avgCost;
+			position.realized +=
+				sign(position.side) * (position.shares - whole) * (price - position.avgCost);
+			position.shares = whole;
+			if (whole === 0) {
+				recordClose(ticker, position, price, day);
+				open.delete(ticker);
+			}
 		}
 
 		const dailyReturn = prevGross > 0 ? pnl / prevGross : 0;
@@ -164,6 +212,15 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 				const price = closeOn(order.ticker, day) ?? last.get(order.ticker)?.close;
 				if (price !== undefined) dayFills.set(order.ticker, price);
 			}
+			const targets = new Map(rebalance.positions.map((t) => [t.ticker, t]));
+			for (const [ticker, prior] of open) {
+				const target = targets.get(ticker);
+				const kept = target?.side === prior.side ? target.shares : 0;
+				if (kept >= prior.shares) continue;
+				const price = closeOn(ticker, day) ?? last.get(ticker)!.close;
+				prior.realized += sign(prior.side) * (prior.shares - kept) * (price - prior.avgCost);
+				if (kept === 0) recordClose(ticker, prior, price, day);
+			}
 			const next = new Map<string, OpenPosition>();
 			for (const target of rebalance.positions) {
 				const price = closeOn(target.ticker, day) ?? last.get(target.ticker)?.close;
@@ -176,15 +233,24 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 					last.set(target.ticker, { close: price, date: day });
 				}
 				const prior = open.get(target.ticker);
-				let avgCost = price;
 				if (prior && prior.side === target.side) {
-					avgCost =
-						target.shares > prior.shares
-							? (prior.shares * prior.avgCost + (target.shares - prior.shares) * price) /
-								target.shares
-							: prior.avgCost;
+					const added = Math.max(target.shares - prior.shares, 0);
+					next.set(target.ticker, {
+						...prior,
+						shares: target.shares,
+						avgCost: (prior.shares * prior.avgCost + added * price) / (prior.shares + added),
+						invested: prior.invested + added * price
+					});
+				} else {
+					next.set(target.ticker, {
+						side: target.side,
+						shares: target.shares,
+						avgCost: price,
+						openedOn: day,
+						invested: target.shares * price,
+						realized: 0
+					});
 				}
-				next.set(target.ticker, { side: target.side, shares: target.shares, avgCost });
 			}
 			open.clear();
 			for (const [ticker, position] of next) open.set(ticker, position);
@@ -212,10 +278,12 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 	}
 
 	const asOf = series.at(-1)?.date ?? null;
+	const gross = [...open].reduce((a, [ticker, p]) => a + p.shares * last.get(ticker)!.close, 0);
 	const holdings: Holding[] = [...open]
 		.map(([ticker, position]) => {
 			const price = last.get(ticker)!;
 			const s = sign(position.side);
+			const marketValue = position.shares * price.close;
 			return {
 				ticker,
 				side: position.side,
@@ -223,9 +291,11 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 				avgCost: position.avgCost,
 				lastClose: price.close,
 				lastPriceDate: price.date,
-				marketValue: position.shares * price.close,
+				marketValue,
 				unrealizedPnl: s * position.shares * (price.close - position.avgCost),
 				unrealizedPct: position.avgCost > 0 ? s * (price.close / position.avgCost - 1) : 0,
+				weight: gross > 0 ? marketValue / gross : 0,
+				openedOn: position.openedOn,
 				stale: asOf !== null && price.date < asOf
 			};
 		})
@@ -234,6 +304,7 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 	return {
 		series,
 		holdings,
+		closed: closed.reverse(),
 		metrics: computeMetrics(series, holdings),
 		fills,
 		orders,

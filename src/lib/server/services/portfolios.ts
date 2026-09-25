@@ -15,6 +15,7 @@ import { diffOrders } from '../portfolio/trades';
 import type { CorporateAction, Order, Position } from '../portfolio/types';
 import {
 	valuePortfolio,
+	type ClosedPosition,
 	type Holding,
 	type Metrics,
 	type SeriesPoint
@@ -42,12 +43,13 @@ export interface TargetPosition extends Position {
 	exit: string;
 }
 
-export interface HeldPosition extends Holding {
+interface Reasoning {
 	thesis: string;
 	exit: string;
-	/** Effective date of the rebalance that opened the position on its current side. */
-	openedOn: string;
 }
+
+export type HeldPosition = Holding & Reasoning;
+export type ClosedPositionView = ClosedPosition & Reasoning;
 
 export interface PendingRebalance {
 	id: number;
@@ -83,6 +85,7 @@ export interface PortfolioView {
 	portfolio: Portfolio;
 	metrics: Metrics;
 	holdings: HeldPosition[];
+	closed: ClosedPositionView[];
 	series: SeriesPoint[];
 	pending: PendingRebalance[];
 	history: ExecutedRebalanceView[];
@@ -267,20 +270,21 @@ function buildView(
 		sessions: market.sessions
 	});
 
-	const targets = new Map<string, TargetPosition>();
-	const openedOn = new Map<string, string>();
-	for (const r of executed) {
-		for (const p of r.positions) {
-			if (targets.get(p.ticker)?.side !== p.side) openedOn.set(p.ticker, r.effectiveDate);
-		}
-		targets.clear();
-		for (const p of r.positions) targets.set(p.ticker, p);
-	}
+	// The reasoning a position was last held under, from the latest target before `date`.
+	const reasoning = (ticker: string, date: string): Reasoning => {
+		const held = executed
+			.filter((r) => r.effectiveDate < date)
+			.findLast((r) => r.positions.some((p) => p.ticker === ticker))
+			?.positions.find((p) => p.ticker === ticker);
+		return { thesis: held?.thesis ?? '', exit: held?.exit ?? '' };
+	};
 	const holdings: HeldPosition[] = valuation.holdings.map((h) => ({
 		...h,
-		thesis: targets.get(h.ticker)!.thesis,
-		exit: targets.get(h.ticker)!.exit,
-		openedOn: openedOn.get(h.ticker)!
+		...reasoning(h.ticker, '9999-12-31')
+	}));
+	const closed: ClosedPositionView[] = valuation.closed.map((c) => ({
+		...c,
+		...reasoning(c.ticker, c.closedOn)
 	}));
 
 	let base: Position[] = valuation.holdings.map((h) => ({
@@ -327,6 +331,7 @@ function buildView(
 		portfolio,
 		metrics: valuation.metrics,
 		holdings,
+		closed,
 		series: valuation.series,
 		pending,
 		history,

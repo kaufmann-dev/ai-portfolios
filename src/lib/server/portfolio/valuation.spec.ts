@@ -94,6 +94,75 @@ describe('valuePortfolio', () => {
 		expect(v.metrics.maxDrawdown).toBeCloseTo(-0.1);
 	});
 
+	it('records closed positions with realized P&L across reductions, dividends, and flips', () => {
+		const v = valuePortfolio({
+			rebalances: [
+				{ id: 1, effectiveDate: D[0], positions: [{ ticker: 'AAA', side: 'long', shares: 10 }] },
+				{ id: 2, effectiveDate: D[1], positions: [{ ticker: 'AAA', side: 'long', shares: 5 }] },
+				{ id: 3, effectiveDate: D[2], positions: [{ ticker: 'AAA', side: 'short', shares: 4 }] },
+				{ id: 4, effectiveDate: D[3], positions: [] }
+			],
+			bars: bars({ AAA: [100, 110, 120, 90] }),
+			actions: [dividend('AAA', D[2], 1)],
+			sessions: D.slice(0, 4)
+		});
+		expect(v.holdings).toEqual([]);
+		expect(v.closed).toEqual([
+			{
+				ticker: 'AAA',
+				side: 'short',
+				openedOn: D[2],
+				closedOn: D[3],
+				avgCost: 120,
+				exitPrice: 90,
+				realizedPnl: expect.closeTo(120),
+				realizedPct: expect.closeTo(120 / 480)
+			},
+			{
+				ticker: 'AAA',
+				side: 'long',
+				openedOn: D[0],
+				closedOn: D[2],
+				avgCost: 100,
+				exitPrice: 120,
+				// 5 sold at 110, a 1.00 dividend on the other 5, then 5 sold at 120.
+				realizedPnl: expect.closeTo(50 + 5 + 100),
+				realizedPct: expect.closeTo(155 / 1000)
+			}
+		]);
+	});
+
+	it('weights holdings by gross exposure and keeps the open date when adding', () => {
+		const v = valuePortfolio({
+			rebalances: [
+				{
+					id: 1,
+					effectiveDate: D[0],
+					positions: [
+						{ ticker: 'AAA', side: 'long', shares: 10 },
+						{ ticker: 'BBB', side: 'short', shares: 5 }
+					]
+				},
+				{
+					id: 2,
+					effectiveDate: D[1],
+					positions: [
+						{ ticker: 'AAA', side: 'long', shares: 30 },
+						{ ticker: 'BBB', side: 'short', shares: 5 }
+					]
+				}
+			],
+			bars: bars({ AAA: [100, 100], BBB: [200, 200] }),
+			actions: [],
+			sessions: D.slice(0, 2)
+		});
+		expect(v.holdings.map((h) => [h.ticker, h.weight, h.openedOn])).toEqual([
+			['AAA', 0.75, D[0]],
+			['BBB', 0.25, D[0]]
+		]);
+		expect(v.closed).toEqual([]);
+	});
+
 	it('rescales shares on a forward split without a fake loss', () => {
 		const v = valuePortfolio({
 			rebalances: [
