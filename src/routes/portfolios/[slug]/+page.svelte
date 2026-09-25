@@ -23,7 +23,7 @@
 				MCP identifier <code>{view.portfolio.slug}</code>
 			</p>
 			{#if view.portfolio.description}
-				<p class="max-w-prose text-muted-foreground">{view.portfolio.description}</p>
+				<p class="max-w-prose wrap-anywhere text-muted-foreground">{view.portfolio.description}</p>
 			{/if}
 		</div>
 		<PortfolioSettings data={data.form} name={view.portfolio.name} />
