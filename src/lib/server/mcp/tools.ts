@@ -97,6 +97,7 @@ function portfolioOut(view: PortfolioView, historyLimit: number, closedLimit: nu
 			avgCost: round(h.avgCost, 4),
 			lastClose: h.lastClose,
 			lastPriceDate: h.lastPriceDate,
+			stale: h.stale,
 			marketValue: round(h.marketValue, 2),
 			unrealizedPnl: round(h.unrealizedPnl, 2),
 			unrealizedPct: round(h.unrealizedPct, 6),
@@ -105,6 +106,7 @@ function portfolioOut(view: PortfolioView, historyLimit: number, closedLimit: nu
 			thesis: h.thesis,
 			exit: h.exit
 		})),
+		unfilled: view.unpriced,
 		pendingRebalances: view.pending,
 		closedPositions: view.closed.slice(0, closedLimit).map((c) => ({
 			...c,
@@ -199,12 +201,14 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 			{
 				title: 'Get portfolio',
 				description:
-					'Returns current holdings (split-adjusted, with average cost, last close, weight of gross ' +
+					'Returns current holdings (split-adjusted, with average cost, last close, a stale flag when ' +
+					'the ticker had no close on the latest session (halted, delisted, or renamed), weight of gross ' +
 					'exposure, open date, and their current thesis and exit plan), the current portfolio ' +
 					'rationale, performance metrics, closed positions with realized P&L (price P&L plus ' +
 					'dividends) and the thesis and exit plan they were held under, pending rebalances with ' +
 					'their orders, recent executed rebalances with fill prices and rationale, and a weekly ' +
-					'performance series. An empty portfolio has no ' +
+					'performance series. `unfilled` lists tickers of the latest executed target that had no ' +
+					'price and were not opened. An empty portfolio has no ' +
 					'holdings yet and needs a first allocation.',
 				inputSchema: z.object({
 					portfolio: portfolioRef,

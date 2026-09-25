@@ -90,7 +90,7 @@ export interface Valuation {
 	fills: Map<number, Map<string, number>>;
 	/** Orders each rebalance executed, relative to the split-adjusted holdings before it. */
 	orders: Map<number, Order[]>;
-	/** Target tickers that had no price at all when their rebalance executed. */
+	/** Target tickers of the latest rebalance that had no price at all when it executed. */
 	unpriced: string[];
 }
 
@@ -222,6 +222,7 @@ export function valuePortfolio(input: ValuationInput): Valuation {
 				if (kept === 0) recordClose(ticker, prior, price, day);
 			}
 			const next = new Map<string, OpenPosition>();
+			unpriced.clear();
 			for (const target of rebalance.positions) {
 				const price = closeOn(target.ticker, day) ?? last.get(target.ticker)?.close;
 				if (price === undefined) {
