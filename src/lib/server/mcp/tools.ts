@@ -20,9 +20,9 @@ performance is P&L relative to gross exposure, compounded daily.
 
 Typical workflow: list_portfolios -> get_portfolio (holdings, performance, history, pending
 rebalances) -> get_strategy when the prompt names one -> get_prices to size positions ->
-submit_portfolio with the COMPLETE target portfolio. Every holding carries the thesis and exit plan
-recorded when it was opened; weigh them against what has happened since before holding, resizing,
-or closing it. Restate them only when your reasoning changes. The submission fills at the first market close
+submit_portfolio with the COMPLETE target portfolio. Every holding carries its thesis and exit plan;
+weigh them against what has happened since before holding, resizing, or closing it, and restate them
+only when your reasoning changes. Closed positions show how earlier theses played out. The submission fills at the first market close
 after it is received; submitting again before that close replaces it.`;
 
 function round(value: number | null, digits: number): number | null {
@@ -81,7 +81,7 @@ function metricsOut(view: Pick<PortfolioView, 'metrics'>) {
 	};
 }
 
-function portfolioOut(view: PortfolioView, historyLimit: number) {
+function portfolioOut(view: PortfolioView, historyLimit: number, closedLimit: number) {
 	return {
 		portfolio: {
 			slug: view.portfolio.slug,
@@ -100,11 +100,18 @@ function portfolioOut(view: PortfolioView, historyLimit: number) {
 			marketValue: round(h.marketValue, 2),
 			unrealizedPnl: round(h.unrealizedPnl, 2),
 			unrealizedPct: round(h.unrealizedPct, 6),
+			weight: round(h.weight, 4),
 			openedOn: h.openedOn,
 			thesis: h.thesis,
 			exit: h.exit
 		})),
 		pendingRebalances: view.pending,
+		closedPositions: view.closed.slice(0, closedLimit).map((c) => ({
+			...c,
+			avgCost: round(c.avgCost, 4),
+			realizedPnl: round(c.realizedPnl, 2),
+			realizedPct: round(c.realizedPct, 6)
+		})),
 		// Theses of held positions are on holdings; history keeps only the sizes.
 		recentRebalances: view.history.slice(0, historyLimit).map((r) => ({
 			...r,
@@ -192,10 +199,12 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 			{
 				title: 'Get portfolio',
 				description:
-					'Returns current holdings (split-adjusted, with average cost, last close, open date, and ' +
-					'their current thesis and exit plan), the current portfolio rationale, ' +
-					'performance metrics, pending rebalances with their orders, recent executed rebalances with fill ' +
-					'prices and rationale, and a weekly performance series. An empty portfolio has no ' +
+					'Returns current holdings (split-adjusted, with average cost, last close, weight of gross ' +
+					'exposure, open date, and their current thesis and exit plan), the current portfolio ' +
+					'rationale, performance metrics, closed positions with realized P&L (price P&L plus ' +
+					'dividends) and the thesis and exit plan they were held under, pending rebalances with ' +
+					'their orders, recent executed rebalances with fill prices and rationale, and a weekly ' +
+					'performance series. An empty portfolio has no ' +
 					'holdings yet and needs a first allocation.',
 				inputSchema: z.object({
 					portfolio: portfolioRef,
@@ -204,13 +213,22 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 						.int()
 						.min(0)
 						.max(200)
+						.default(5)
+						.describe('How many recent executed rebalances (orders, fills, rationale) to include.'),
+					closed_limit: z
+						.number()
+						.int()
+						.min(0)
+						.max(500)
 						.default(20)
-						.describe('How many recent executed rebalances to include.')
+						.describe('How many most recently closed positions to include.')
 				}),
 				annotations: { readOnlyHint: true }
 			},
-			({ portfolio, history_limit }) =>
-				guard(async () => portfolioOut(await getPortfolioView(portfolio), history_limit))
+			({ portfolio, history_limit, closed_limit }) =>
+				guard(async () =>
+					portfolioOut(await getPortfolioView(portfolio), history_limit, closed_limit)
+				)
 		);
 
 	if (allowed('submit_portfolio'))

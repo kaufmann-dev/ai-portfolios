@@ -106,16 +106,16 @@ claude mcp add --transport http ai-portfolios https://portfolios.example.com/mcp
 codex mcp add ai-portfolios --url https://portfolios.example.com/mcp && codex mcp login ai-portfolios
 ```
 
-| Tool               | Purpose                                                                                                      |
-| ------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `list_portfolios`  | Portfolios with performance and pending-rebalance counts                                                     |
-| `create_portfolio` | Create an empty portfolio                                                                                    |
-| `get_portfolio`    | Holdings with thesis and exit plan, current rationale, metrics, pending and recent rebalances, weekly series |
-| `submit_portfolio` | Submit the complete target portfolio with a required rationale; new positions need a `thesis` and `exit`     |
-| `get_prices`       | Latest price and previous close, for sizing whole-share positions                                            |
-| `validate_tickers` | Check that tickers are active U.S. stocks or ETFs                                                            |
-| `list_strategies`  | Hosted strategies                                                                                            |
-| `get_strategy`     | Full text of a hosted strategy                                                                               |
+| Tool               | Purpose                                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `list_portfolios`  | Portfolios with performance and pending-rebalance counts                                                        |
+| `create_portfolio` | Create an empty portfolio                                                                                       |
+| `get_portfolio`    | Holdings with weight, thesis, and exit plan; closed positions with realized P&L; rationale, metrics, rebalances |
+| `submit_portfolio` | Submit the complete target portfolio with a required rationale; new positions need a `thesis` and `exit`        |
+| `get_prices`       | Latest price and previous close, for sizing whole-share positions                                               |
+| `validate_tickers` | Check that tickers are active U.S. stocks or ETFs                                                               |
+| `list_strategies`  | Hosted strategies                                                                                               |
+| `get_strategy`     | Full text of a hosted strategy                                                                                  |
 
 Strategies are written and edited on the Strategies page.
 

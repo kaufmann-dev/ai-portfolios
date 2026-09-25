@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ClosedTable from '$lib/components/portfolio/closed-table.svelte';
 	import HistoryList from '$lib/components/portfolio/history-list.svelte';
 	import HoldingsTable from '$lib/components/portfolio/holdings-table.svelte';
 	import MetricsGrid from '$lib/components/portfolio/metrics-grid.svelte';
@@ -62,6 +63,11 @@
 		<section class="flex flex-col gap-4" aria-labelledby="holdings">
 			<h2 id="holdings" class="text-lg font-semibold">Holdings</h2>
 			<HoldingsTable holdings={view.holdings} />
+		</section>
+
+		<section class="flex flex-col gap-4" aria-labelledby="closed">
+			<h2 id="closed" class="text-lg font-semibold">Closed positions</h2>
+			<ClosedTable closed={view.closed} />
 		</section>
 
 		<section class="flex flex-col gap-4" aria-labelledby="history">
