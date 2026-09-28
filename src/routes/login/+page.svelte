@@ -51,4 +51,14 @@
 		{/if}
 		Sign in with Pocket ID
 	</Button>
+	<nav aria-label="Legal" class="flex gap-4 text-sm">
+		<a
+			href="https://legal.kaufmann.dev/imprint?site=portfolios.kaufmann.dev"
+			class="text-muted-foreground hover:text-foreground">Imprint</a
+		>
+		<a
+			href="https://legal.kaufmann.dev/privacy?site=portfolios.kaufmann.dev"
+			class="text-muted-foreground hover:text-foreground">Privacy</a
+		>
+	</nav>
 </div>
