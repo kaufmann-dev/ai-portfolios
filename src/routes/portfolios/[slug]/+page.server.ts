@@ -9,6 +9,7 @@ import {
 	deletePortfolio,
 	getPortfolio,
 	getPortfolioView,
+	resetPortfolio,
 	updatePortfolio
 } from '$lib/server/services/portfolios';
 import type { Actions, PageServerLoad } from './$types';
@@ -46,6 +47,11 @@ export const actions: Actions = {
 		}
 		if (slug !== params.slug) redirect(303, `/portfolios/${slug}`);
 		return { form };
+	},
+	reset: async ({ params }) => {
+		const portfolio = await portfolioOr404(params.slug);
+		await resetPortfolio(portfolio.id);
+		return { reset: true };
 	},
 	delete: async ({ params }) => {
 		const portfolio = await portfolioOr404(params.slug);

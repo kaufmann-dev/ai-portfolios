@@ -26,6 +26,40 @@
 		<PortfolioForm {data} action="?/update" submitLabel="Save" onsaved={() => (open = false)} />
 		<Separator />
 		<div class="flex items-center justify-between gap-4">
+			<p class="text-sm text-muted-foreground">Resetting removes all rebalances and history.</p>
+			<AlertDialog.Root>
+				<AlertDialog.Trigger class={buttonVariants({ variant: 'destructive' })}>
+					Reset portfolio
+				</AlertDialog.Trigger>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Reset {name}?</AlertDialog.Title>
+						<AlertDialog.Description>
+							This permanently deletes every rebalance, including pending ones, and the performance
+							history. The portfolio stays, empty, and its next submission becomes its first
+							allocation.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel>Keep history</AlertDialog.Cancel>
+						<form
+							method="POST"
+							action="?/reset"
+							use:enhance={() =>
+								async ({ result, update }) => {
+									await update();
+									if (result.type === 'success') open = false;
+								}}
+						>
+							<AlertDialog.Action type="submit" class={buttonVariants({ variant: 'destructive' })}>
+								Reset
+							</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
+		</div>
+		<div class="flex items-center justify-between gap-4">
 			<p class="text-sm text-muted-foreground">Deleting removes all history.</p>
 			<AlertDialog.Root>
 				<AlertDialog.Trigger class={buttonVariants({ variant: 'destructive' })}>

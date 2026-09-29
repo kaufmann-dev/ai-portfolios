@@ -158,6 +158,11 @@ export async function deletePortfolio(id: number): Promise<void> {
 	await db.delete(portfolios).where(eq(portfolios.id, id));
 }
 
+/** Deletes every rebalance, pending or executed, leaving an empty portfolio with no history. */
+export async function resetPortfolio(id: number): Promise<void> {
+	await db.delete(rebalances).where(eq(rebalances.portfolioId, id));
+}
+
 type RebalanceRow = {
 	id: number;
 	effectiveDate: string;
