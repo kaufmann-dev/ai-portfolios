@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { MASSIVE_API_KEY } from '$app/env/private';
 
 const BASE_URL = 'https://api.massive.com';
 const PAGE_LIMIT = 5000;
@@ -22,7 +22,7 @@ async function getJson(url: string): Promise<Json> {
 	let response: Response;
 	try {
 		response = await fetch(url, {
-			headers: { Authorization: `Bearer ${env.MASSIVE_API_KEY}` },
+			headers: { Authorization: `Bearer ${MASSIVE_API_KEY}` },
 			signal: AbortSignal.timeout(TIMEOUT_MS)
 		});
 	} catch (error) {
@@ -62,6 +62,7 @@ export async function fetchGroupedCloses(date: string): Promise<Map<string, numb
 		buildUrl(`/v2/aggs/grouped/locale/us/market/stocks/${date}`, { adjusted: 'false' })
 	);
 	const closes = new Map<string, number>();
+
 	for (const bar of (body.results as Json[] | undefined) ?? []) {
 		if (typeof bar.T === 'string' && typeof bar.c === 'number' && bar.c > 0)
 			closes.set(bar.T, bar.c);
@@ -77,6 +78,7 @@ export async function fetchTickerClose(ticker: string, date: string): Promise<nu
 		})
 	);
 	const bar = ((body.results as Json[] | undefined) ?? [])[0];
+
 	return typeof bar?.c === 'number' ? bar.c : null;
 }
 
@@ -88,17 +90,21 @@ export interface SplitEvent {
 
 /** Splits and stock dividends that take effect before the open of `date`. */
 export async function fetchSplits(date: string): Promise<SplitEvent[]> {
-	const rows = await paginate('/stocks/v1/splits', {
-		execution_date: date,
-		limit: PAGE_LIMIT
-	});
+	const rows = await paginate('/stocks/v1/splits', { execution_date: date, limit: PAGE_LIMIT });
+
 	return rows.flatMap((row) =>
 		typeof row.ticker === 'string' &&
 		typeof row.split_from === 'number' &&
 		typeof row.split_to === 'number' &&
 		row.split_from > 0 &&
 		row.split_to > 0
-			? [{ ticker: row.ticker, splitFrom: row.split_from, splitTo: row.split_to }]
+			? [
+					{
+						ticker: row.ticker,
+						splitFrom: row.split_from,
+						splitTo: row.split_to
+					}
+				]
 			: []
 	);
 }

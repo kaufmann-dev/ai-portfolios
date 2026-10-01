@@ -1,9 +1,9 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { portfolioSchema } from '$lib/schemas';
-import { failMessage, failWithServiceError } from '$lib/server/forms';
-import { ServiceError } from '$lib/server/services/errors';
+import { portfolioSchema } from '#lib/schemas.js';
+import { failMessage, failWithServiceError } from '#lib/server/forms.js';
+import { ServiceError } from '#lib/server/services/errors.js';
 import {
 	cancelPendingRebalance,
 	deletePortfolio,
@@ -11,7 +11,7 @@ import {
 	getPortfolioView,
 	resetPortfolio,
 	updatePortfolio
-} from '$lib/server/services/portfolios';
+} from '#lib/server/services/portfolios.js';
 import type { Actions, PageServerLoad } from './$types';
 
 async function portfolioOr404(slug: string) {

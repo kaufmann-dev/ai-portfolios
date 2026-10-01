@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { enhance } from '$app/forms';
-	import StrategyForm from '$lib/components/strategy-form.svelte';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import { buttonVariants } from '$lib/components/ui/button';
+	import StrategyForm from '#lib/components/strategy-form.svelte';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
+	import { buttonVariants } from '#lib/components/ui/button/index.js';
 
 	let { data } = $props();
 </script>
@@ -11,9 +11,10 @@
 <svelte:head><title>{data.strategy.name} · AI Portfolios</title></svelte:head>
 
 <div class="flex flex-col gap-6">
-	<a href={resolve('/strategies')} class="text-sm text-muted-foreground hover:text-foreground"
+	<a href={resolve('strategies')} class="text-sm text-muted-foreground hover:text-foreground"
 		>← Strategies</a
 	>
+
 	<div class="flex flex-wrap items-center justify-between gap-4">
 		<h1 class="min-w-0 truncate text-2xl font-semibold">{data.strategy.name}</h1>
 		<AlertDialog.Root>

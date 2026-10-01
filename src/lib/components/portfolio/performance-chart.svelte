@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { scaleUtc } from 'd3-scale';
 	import { LineChart } from 'layerchart';
-	import * as Chart from '$lib/components/ui/chart';
-	import { formatSignedPct } from '$lib/format';
-	import type { SeriesPoint } from '$lib/server/portfolio/valuation';
+	import * as Chart from '#lib/components/ui/chart/index.js';
+	import { formatSignedPct } from '#lib/format.js';
+	import type { SeriesPoint } from '#lib/server/portfolio/valuation.js';
 
 	let { series }: { series: SeriesPoint[] } = $props();
 

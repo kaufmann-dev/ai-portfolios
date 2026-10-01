@@ -1,12 +1,12 @@
 <script lang="ts">
-	import ClosedTable from '$lib/components/portfolio/closed-table.svelte';
-	import HistoryList from '$lib/components/portfolio/history-list.svelte';
-	import HoldingsTable from '$lib/components/portfolio/holdings-table.svelte';
-	import MetricsGrid from '$lib/components/portfolio/metrics-grid.svelte';
-	import PendingBanner from '$lib/components/portfolio/pending-banner.svelte';
-	import PerformanceChart from '$lib/components/portfolio/performance-chart.svelte';
-	import PortfolioSettings from '$lib/components/portfolio/portfolio-settings.svelte';
-	import * as Alert from '$lib/components/ui/alert';
+	import ClosedTable from '#lib/components/portfolio/closed-table.svelte';
+	import HistoryList from '#lib/components/portfolio/history-list.svelte';
+	import HoldingsTable from '#lib/components/portfolio/holdings-table.svelte';
+	import MetricsGrid from '#lib/components/portfolio/metrics-grid.svelte';
+	import PendingBanner from '#lib/components/portfolio/pending-banner.svelte';
+	import PerformanceChart from '#lib/components/portfolio/performance-chart.svelte';
+	import PortfolioSettings from '#lib/components/portfolio/portfolio-settings.svelte';
+	import * as Alert from '#lib/components/ui/alert/index.js';
 
 	let { data, form } = $props();
 	const view = $derived(data.view);

@@ -13,13 +13,10 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter(),
+			// Public origin behind the reverse proxy; used for CSRF checks and request URLs.
+			paths: { origin: process.env.ORIGIN || undefined },
 			// Replaced by the equivalent check in hooks.server.ts, which exempts OAuth endpoints.
-			csrf: { trustedOrigins: ['*'] },
-			typescript: {
-				config: (config) => {
-					config.include.push('../drizzle.config.ts');
-				}
-			}
+			csrf: { trustedOrigins: ['*'] }
 		})
 	],
 	test: {

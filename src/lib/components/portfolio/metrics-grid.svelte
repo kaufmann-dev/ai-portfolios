@@ -1,7 +1,7 @@
 <script lang="ts">
-	import SignedValue from '$lib/components/signed-value.svelte';
-	import { formatDate, formatMoney, formatPct, formatRatio } from '$lib/format';
-	import type { Metrics } from '$lib/server/portfolio/valuation';
+	import SignedValue from '#lib/components/signed-value.svelte';
+	import { formatDate, formatMoney, formatPct, formatRatio } from '#lib/format.js';
+	import type { Metrics } from '#lib/server/portfolio/valuation.js';
 
 	let { metrics }: { metrics: Metrics } = $props();
 </script>

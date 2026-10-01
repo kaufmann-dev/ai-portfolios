@@ -1,10 +1,10 @@
 <script lang="ts">
 	import Plus from '@lucide/svelte/icons/plus';
 	import type { Infer, SuperValidated } from 'sveltekit-superforms';
-	import PortfolioForm from '$lib/components/portfolio-form.svelte';
-	import { buttonVariants } from '$lib/components/ui/button';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import type { portfolioSchema } from '$lib/schemas';
+	import PortfolioForm from '#lib/components/portfolio-form.svelte';
+	import { buttonVariants } from '#lib/components/ui/button/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import type { portfolioSchema } from '#lib/schemas.js';
 
 	let { data }: { data: SuperValidated<Infer<typeof portfolioSchema>> } = $props();
 </script>

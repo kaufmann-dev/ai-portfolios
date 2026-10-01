@@ -1,9 +1,9 @@
 <script lang="ts">
-	import SignedValue from '$lib/components/signed-value.svelte';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as Table from '$lib/components/ui/table';
-	import { formatDate, formatPrice } from '$lib/format';
-	import type { ClosedPositionView } from '$lib/server/services/portfolios';
+	import SignedValue from '#lib/components/signed-value.svelte';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { formatDate, formatPrice } from '#lib/format.js';
+	import type { ClosedPositionView } from '#lib/server/services/portfolios.js';
 	import PositionReasoning from './position-reasoning.svelte';
 	import ReasoningToggle from './reasoning-toggle.svelte';
 

@@ -5,9 +5,9 @@
 	import CircleUser from '@lucide/svelte/icons/circle-user';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import SunMoon from '@lucide/svelte/icons/sun-moon';
-	import { Button } from '$lib/components/ui/button';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { authClient } from '$lib/auth-client';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.js';
+	import { authClient } from '#lib/auth-client.js';
 
 	let { user }: { user: { name: string; email: string } } = $props();
 

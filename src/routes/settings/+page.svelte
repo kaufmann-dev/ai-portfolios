@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import CopyField from '$lib/components/copy-field.svelte';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import { buttonVariants } from '$lib/components/ui/button';
-	import * as Table from '$lib/components/ui/table';
-	import { formatDateTime } from '$lib/format';
+	import CopyField from '#lib/components/copy-field.svelte';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
+	import { buttonVariants } from '#lib/components/ui/button/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { formatDateTime } from '#lib/format.js';
 
 	let { data } = $props();
 

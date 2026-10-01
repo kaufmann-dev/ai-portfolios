@@ -7,7 +7,15 @@ import { cimd } from '@better-auth/cimd';
 import { fetchClientMetadataResource } from '@better-auth/cimd/node';
 import { mcp } from '@better-auth/mcp';
 import { getRequestEvent } from '$app/server';
-import { env } from '$env/dynamic/private';
+
+import {
+	ORIGIN,
+	BETTER_AUTH_SECRET,
+	POCKET_ID_CLIENT_ID,
+	POCKET_ID_CLIENT_SECRET,
+	POCKET_ID_ISSUER
+} from '$app/env/private';
+
 import { db } from './db';
 import * as schema from './db/schema';
 import { MCP_SCOPES, type McpScope } from './mcp/scopes';
@@ -15,7 +23,7 @@ import { withInferredApplicationType } from './oauth-registration';
 
 export const POCKET_ID_PROVIDER = 'pocket-id';
 
-const origin = (env.ORIGIN ?? '').replace(/\/$/, '');
+const origin = (ORIGIN ?? '').replace(/\/$/, '');
 
 /** The MCP endpoint's protected resource identifier (RFC 8707 / RFC 9728); tokens carry it as `aud`. */
 export const MCP_RESOURCE = `${origin}/mcp`;
@@ -32,7 +40,7 @@ export const OAUTH_SCOPES = [
 function createAuth() {
 	return betterAuth({
 		baseURL: origin,
-		secret: env.BETTER_AUTH_SECRET,
+		secret: BETTER_AUTH_SECRET,
 		database: drizzleAdapter(db, { provider: 'pg', schema }),
 		emailAndPassword: { enabled: false },
 		// Browser sessions end seven days after sign-in and are never extended.
@@ -52,9 +60,9 @@ function createAuth() {
 				config: [
 					{
 						providerId: POCKET_ID_PROVIDER,
-						clientId: env.POCKET_ID_CLIENT_ID ?? '',
-						clientSecret: env.POCKET_ID_CLIENT_SECRET,
-						discoveryUrl: `${(env.POCKET_ID_ISSUER ?? '').replace(/\/$/, '')}/.well-known/openid-configuration`,
+						clientId: POCKET_ID_CLIENT_ID ?? '',
+						clientSecret: POCKET_ID_CLIENT_SECRET,
+						discoveryUrl: `${(POCKET_ID_ISSUER ?? '').replace(/\/$/, '')}/.well-known/openid-configuration`,
 						scopes: ['openid', 'email', 'profile']
 					}
 				]

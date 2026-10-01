@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatSignedMoney, formatSignedPct, toneClass } from '$lib/format';
+	import { formatSignedMoney, formatSignedPct, toneClass } from '#lib/format.js';
 
 	let { value, kind = 'pct' }: { value: number; kind?: 'pct' | 'money' } = $props();
 </script>

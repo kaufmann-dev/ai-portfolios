@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { listConnectedApps, revokeConnectedApp } from '$lib/server/services/connected-apps';
+import { listConnectedApps, revokeConnectedApp } from '#lib/server/services/connected-apps.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => ({

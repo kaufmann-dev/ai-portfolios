@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Table from '$lib/components/ui/table';
+	import * as Table from '#lib/components/ui/table/index.js';
 
 	let { id, colspan, thesis, exit }: { id: string; colspan: number; thesis: string; exit: string } =
 		$props();

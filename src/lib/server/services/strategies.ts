@@ -1,5 +1,5 @@
 import { asc, eq, or, sql } from 'drizzle-orm';
-import { slugify } from '$lib/schemas';
+import { slugify } from '#lib/schemas.js';
 import { db } from '../db';
 import { strategies } from '../db/schema';
 import { ServiceError } from './errors';

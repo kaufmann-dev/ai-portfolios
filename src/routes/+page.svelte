@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import Briefcase from '@lucide/svelte/icons/briefcase';
-	import NewPortfolioDialog from '$lib/components/new-portfolio-dialog.svelte';
-	import SignedValue from '$lib/components/signed-value.svelte';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as Empty from '$lib/components/ui/empty';
-	import * as Table from '$lib/components/ui/table';
-	import { formatDate, formatMoney } from '$lib/format';
+	import NewPortfolioDialog from '#lib/components/new-portfolio-dialog.svelte';
+	import SignedValue from '#lib/components/signed-value.svelte';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import * as Empty from '#lib/components/ui/empty/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { formatDate, formatMoney } from '#lib/format.js';
 
 	let { data } = $props();
 </script>

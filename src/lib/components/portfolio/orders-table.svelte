@@ -1,7 +1,7 @@
 <script lang="ts">
-	import * as Table from '$lib/components/ui/table';
-	import { formatPrice, formatShares, ORDER_LABELS } from '$lib/format';
-	import type { Order } from '$lib/server/portfolio/types';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { formatPrice, formatShares, ORDER_LABELS } from '#lib/format.js';
+	import type { Order } from '#lib/server/portfolio/types.js';
 
 	let { orders, prices }: { orders: (Order & { price?: number | null })[]; prices?: boolean } =
 		$props();

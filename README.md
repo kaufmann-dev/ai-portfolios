@@ -45,16 +45,16 @@ Better Auth tables live in `src/lib/server/db/auth-schema.ts`, generated with `n
 
 ## Environment Variables
 
-| Variable                   | Required | Purpose                                                        |
-| -------------------------- | -------- | -------------------------------------------------------------- |
-| `DATABASE_URL`             | Yes      | PostgreSQL connection string                                   |
-| `ORIGIN`                   | Yes      | Public URL of the app, e.g. `https://portfolios.example.com`   |
-| `BETTER_AUTH_SECRET`       | Yes      | Random secret for sessions (`openssl rand -base64 32`)         |
-| `POCKET_ID_ISSUER`         | Yes      | Pocket ID base URL, e.g. `https://id.example.com`              |
-| `POCKET_ID_CLIENT_ID`      | Yes      | OIDC client ID from Pocket ID                                  |
-| `POCKET_ID_CLIENT_SECRET`  | Yes      | OIDC client secret from Pocket ID                              |
-| `MASSIVE_API_KEY`          | Yes      | Massive API key for prices, corporate actions, and ticker data |
-| `REFRESH_INTERVAL_MINUTES` | No       | Minutes between market-data refresh runs (default `10`)        |
+| Variable                   | Required | Purpose                                                                                                            |
+| -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`             | Yes      | PostgreSQL connection string                                                                                       |
+| `ORIGIN`                   | Yes      | Public URL of the app, e.g. `https://portfolios.example.com`; also needed at build time (SvelteKit `paths.origin`) |
+| `BETTER_AUTH_SECRET`       | Yes      | Random secret for sessions (`openssl rand -base64 32`)                                                             |
+| `POCKET_ID_ISSUER`         | Yes      | Pocket ID base URL, e.g. `https://id.example.com`                                                                  |
+| `POCKET_ID_CLIENT_ID`      | Yes      | OIDC client ID from Pocket ID                                                                                      |
+| `POCKET_ID_CLIENT_SECRET`  | Yes      | OIDC client secret from Pocket ID                                                                                  |
+| `MASSIVE_API_KEY`          | Yes      | Massive API key for prices, corporate actions, and ticker data                                                     |
+| `REFRESH_INTERVAL_MINUTES` | No       | Minutes between market-data refresh runs (default `10`)                                                            |
 
 The app refuses to start when a required variable is missing or when Pocket ID's discovery
 document cannot be loaded.

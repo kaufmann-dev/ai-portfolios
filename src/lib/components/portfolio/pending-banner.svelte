@@ -2,10 +2,10 @@
 	import { enhance } from '$app/forms';
 	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Hourglass from '@lucide/svelte/icons/hourglass';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import { formatDate, formatDateTime } from '$lib/format';
-	import type { PendingRebalance } from '$lib/server/services/portfolios';
+	import * as Alert from '#lib/components/ui/alert/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { formatDate, formatDateTime } from '#lib/format.js';
+	import type { PendingRebalance } from '#lib/server/services/portfolios.js';
 	import OrdersTable from './orders-table.svelte';
 	import Rationale from './rationale.svelte';
 

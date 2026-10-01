@@ -1,9 +1,9 @@
 <script lang="ts">
 	import LogIn from '@lucide/svelte/icons/log-in';
-	import { authClient } from '$lib/auth-client';
-	import * as Alert from '$lib/components/ui/alert';
-	import { Button } from '$lib/components/ui/button';
-	import { Spinner } from '$lib/components/ui/spinner';
+	import { authClient } from '#lib/auth-client.js';
+	import * as Alert from '#lib/components/ui/alert/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Spinner } from '#lib/components/ui/spinner/index.js';
 
 	let { data } = $props();
 	let pending = $state(false);

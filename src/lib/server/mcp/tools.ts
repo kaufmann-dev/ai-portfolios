@@ -1,7 +1,7 @@
 import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
 import { TOOL_SCOPES } from './scopes';
 import { z } from 'zod';
-import { positionSchema, strategySchema, TICKER_PATTERN } from '$lib/schemas';
+import { positionSchema, strategySchema, TICKER_PATTERN } from '#lib/schemas.js';
 import { ServiceError } from '../services/errors';
 import {
 	createPortfolio,

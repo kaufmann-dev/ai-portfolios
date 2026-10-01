@@ -1,8 +1,8 @@
 <script lang="ts">
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import * as Collapsible from '$lib/components/ui/collapsible';
-	import { formatDate, formatDateTime } from '$lib/format';
-	import type { ExecutedRebalanceView } from '$lib/server/services/portfolios';
+	import * as Collapsible from '#lib/components/ui/collapsible/index.js';
+	import { formatDate, formatDateTime } from '#lib/format.js';
+	import type { ExecutedRebalanceView } from '#lib/server/services/portfolios.js';
 	import OrdersTable from './orders-table.svelte';
 	import Rationale from './rationale.svelte';
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import * as Collapsible from '$lib/components/ui/collapsible';
+	import * as Collapsible from '#lib/components/ui/collapsible/index.js';
 
 	let { text, strategy }: { text: string; strategy: { name: string } | null } = $props();
 </script>

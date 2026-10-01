@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import { auth } from '$lib/server/auth';
-import { MCP_SCOPES } from '$lib/server/mcp/scopes';
+import { auth } from '#lib/server/auth.js';
+import { MCP_SCOPES } from '#lib/server/mcp/scopes.js';
 import type { PageServerLoad } from './$types';
 
 const IDENTITY_SCOPES: Record<string, string> = {

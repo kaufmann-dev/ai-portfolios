@@ -1,9 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { strategySchema } from '$lib/schemas';
-import { failWithServiceError } from '$lib/server/forms';
-import { createStrategy } from '$lib/server/services/strategies';
+import { strategySchema } from '#lib/schemas.js';
+import { failWithServiceError } from '#lib/server/forms.js';
+import { createStrategy } from '#lib/server/services/strategies.js';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => ({

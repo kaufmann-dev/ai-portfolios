@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, or, sql } from 'drizzle-orm';
-import { slugify } from '$lib/schemas';
+import { slugify } from '#lib/schemas.js';
 import { db } from '../db';
 import {
 	corporateActions,

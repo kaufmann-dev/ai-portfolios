@@ -2,12 +2,12 @@
 	import { enhance } from '$app/forms';
 	import Settings from '@lucide/svelte/icons/settings';
 	import type { Infer, SuperValidated } from 'sveltekit-superforms';
-	import PortfolioForm from '$lib/components/portfolio-form.svelte';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import { buttonVariants } from '$lib/components/ui/button';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Separator } from '$lib/components/ui/separator';
-	import type { portfolioSchema } from '$lib/schemas';
+	import PortfolioForm from '#lib/components/portfolio-form.svelte';
+	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
+	import { buttonVariants } from '#lib/components/ui/button/index.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
+	import type { portfolioSchema } from '#lib/schemas.js';
 
 	let { data, name }: { data: SuperValidated<Infer<typeof portfolioSchema>>; name: string } =
 		$props();

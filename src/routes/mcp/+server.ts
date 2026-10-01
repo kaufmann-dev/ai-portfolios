@@ -1,9 +1,9 @@
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { requireMcpAuth } from '@better-auth/mcp';
 import type { RequestHandler } from './$types';
-import { auth, MCP_RESOURCE } from '$lib/server/auth';
-import { MCP_SCOPES, TOOL_SCOPES } from '$lib/server/mcp/scopes';
-import { createMcpServer } from '$lib/server/mcp/tools';
+import { auth, MCP_RESOURCE } from '#lib/server/auth.js';
+import { MCP_SCOPES, TOOL_SCOPES } from '#lib/server/mcp/scopes.js';
+import { createMcpServer } from '#lib/server/mcp/tools.js';
 
 /**
  * Serves the 2026-07-28 protocol and, statelessly, 2025-era clients from one tool definition.

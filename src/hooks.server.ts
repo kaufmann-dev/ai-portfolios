@@ -1,12 +1,13 @@
-import { redirect, type Handle, type ServerInit } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
+import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import { building } from '$app/environment';
-import { auth, initAuth } from '$lib/server/auth';
-import { isForbiddenCrossSiteForm } from '$lib/server/csrf';
-import { db } from '$lib/server/db';
-import { assertEnv, refreshIntervalMs } from '$lib/server/env';
-import { refreshMarketData } from '$lib/server/jobs/refresh';
+import { building } from '$app/env';
+import { auth, initAuth } from '#lib/server/auth.js';
+import { isForbiddenCrossSiteForm } from '#lib/server/csrf.js';
+import { db } from '#lib/server/db/index.js';
+import { assertEnv, refreshIntervalMs } from '#lib/server/env.js';
+import { refreshMarketData } from '#lib/server/jobs/refresh.js';
 
 export const init: ServerInit = async () => {
 	assertEnv();

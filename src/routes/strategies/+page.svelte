@@ -2,10 +2,10 @@
 	import { resolve } from '$app/paths';
 	import Plus from '@lucide/svelte/icons/plus';
 	import ScrollText from '@lucide/svelte/icons/scroll-text';
-	import { Button } from '$lib/components/ui/button';
-	import * as Empty from '$lib/components/ui/empty';
-	import * as Table from '$lib/components/ui/table';
-	import { formatDateTime } from '$lib/format';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import * as Empty from '#lib/components/ui/empty/index.js';
+	import * as Table from '#lib/components/ui/table/index.js';
+	import { formatDateTime } from '#lib/format.js';
 
 	let { data } = $props();
 </script>
@@ -22,7 +22,7 @@
 			</p>
 		</div>
 		{#if data.strategies.length}
-			<Button href={resolve('/strategies/new')}><Plus />New strategy</Button>
+			<Button href={resolve('strategies/new')}><Plus />New strategy</Button>
 		{/if}
 	</div>
 
@@ -36,9 +36,10 @@
 					from the MCP server”.
 				</Empty.Description>
 			</Empty.Header>
-			<Empty.Content>
-				<Button href={resolve('/strategies/new')}><Plus />New strategy</Button>
-			</Empty.Content>
+
+			<Empty.Content
+				><Button href={resolve('strategies/new')}><Plus />New strategy</Button></Empty.Content
+			>
 		</Empty.Root>
 	{:else}
 		<Table.Root>
