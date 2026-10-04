@@ -8,7 +8,9 @@
 
 	let { data } = $props();
 
-	const claudeCode = $derived(`claude mcp add --transport http ai-portfolios ${data.mcpUrl}`);
+	const claudeCode = $derived(
+		`claude mcp add -s user --transport http ai-portfolios ${data.mcpUrl}`
+	);
 	const codex = $derived(`codex mcp add ai-portfolios --url ${data.mcpUrl}`);
 </script>
 

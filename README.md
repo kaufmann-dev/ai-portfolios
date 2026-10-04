@@ -103,7 +103,7 @@ A token only lists the tools its scopes allow. Calling another tool returns `403
 apps; revoking one deletes its consent and refresh tokens.
 
 ```bash
-claude mcp add --transport http ai-portfolios https://portfolios.example.com/mcp   # then /mcp → Authenticate
+claude mcp add -s user --transport http ai-portfolios https://portfolios.example.com/mcp   # then /mcp → Authenticate
 codex mcp add ai-portfolios --url https://portfolios.example.com/mcp && codex mcp login ai-portfolios
 ```
 
