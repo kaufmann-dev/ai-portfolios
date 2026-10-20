@@ -23,8 +23,9 @@ import type { SeriesPoint } from '../portfolio/valuation';
 
 const PRICES: Record<MassivePlan, string> = {
 	basic:
-		'Prices are end-of-day: get_prices returns the latest completed close, not intraday prices; ' +
-		'size from it and leave slack, since the fill is at the next close.',
+		'get_prices returns only the latest completed close, not intraday prices. Size positions ' +
+		'from current prices taken from another source you have (a market-data tool or web search); ' +
+		'use get_prices only when no other source is available.',
 	starter: 'get_prices returns the latest trade (delayed or real-time, as of priceTime).'
 };
 
@@ -48,7 +49,7 @@ it is received; submitting again before that close replaces it.`;
 const GET_PRICES: Record<MassivePlan, string> = {
 	basic:
 		'Latest completed close and the close before it for up to 100 tickers (end-of-day data; ' +
-		'priceTime is the close). Use it to size whole-share positions.',
+		'priceTime is the close). Not a current price: prefer another source for sizing.',
 	starter:
 		'Latest trade price (delayed or real-time per the data plan; priceTime is the trade time) and ' +
 		'previous close for up to 100 tickers. Use it to size whole-share positions.'
