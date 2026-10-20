@@ -118,10 +118,32 @@ export const marketSessions = pgTable('market_sessions', {
 	fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+/** Active U.S.-listed stocks and ETFs, mirrored from Massive once per trading day. */
 export const tickers = pgTable('tickers', {
 	ticker: text('ticker').primaryKey(),
 	name: text('name').notNull(),
 	type: text('type'),
-	active: boolean('active').notNull(),
-	checkedAt: timestamp('checked_at', { withTimezone: true }).defaultNow().notNull()
+	syncedAt: timestamp('synced_at', { withTimezone: true }).notNull()
 });
+
+/** The latest two unadjusted closes of every U.S. ticker, from the market-wide grouped bars. */
+export const lastCloses = pgTable('last_closes', {
+	ticker: text('ticker').primaryKey(),
+	date: date('date').notNull(),
+	close: numeric('close', { precision: 18, scale: 6, mode: 'number' }).notNull(),
+	previousDate: date('previous_date'),
+	previousClose: numeric('previous_close', { precision: 18, scale: 6, mode: 'number' })
+});
+
+export const massivePlan = pgEnum('massive_plan', ['basic', 'starter']);
+
+/** App-wide settings; a single row. */
+export const appSettings = pgTable(
+	'app_settings',
+	{
+		id: integer('id').primaryKey().default(1),
+		massivePlan: massivePlan('massive_plan').notNull().default('basic'),
+		...timestamps
+	},
+	(t) => [check('app_settings_single_row', sql`${t.id} = 1`)]
+);

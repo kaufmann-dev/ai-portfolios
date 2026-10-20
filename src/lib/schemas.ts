@@ -30,6 +30,12 @@ export const strategySchema = z.object({
 	content: z.string().trim().min(1, 'Describe the strategy.').max(100_000)
 });
 
+export const MASSIVE_PLANS = ['basic', 'starter'] as const;
+
+export const settingsSchema = z.object({
+	massivePlan: z.enum(MASSIVE_PLANS)
+});
+
 export const positionSchema = z.object({
 	ticker: z
 		.string()

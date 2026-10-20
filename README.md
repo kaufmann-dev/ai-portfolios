@@ -15,7 +15,11 @@ whether to keep or close it.
   those daily returns are compounded into total return. Splits adjust share counts. Cash dividends
   are credited to longs and charged to shorts on the ex-date. There are no trading costs.
 - **Prices** come from [Massive](https://massive.com): unadjusted daily closes, splits, and
-  dividends, fetched every 10 minutes once a session has closed.
+  dividends, fetched every 10 minutes once a session has closed. Choose your Massive plan in
+  Settings. On the free **Basic** plan, requests are paced to 5 per minute and only the background
+  refresh calls Massive: `get_prices` returns the latest close, and tickers are checked against a
+  list of active U.S.-listed stocks and ETFs mirrored once per trading day. On **Starter or
+  higher**, `get_prices` returns snapshot prices (delayed or real-time) in one request.
 
 Stack: SvelteKit (adapter-node), Svelte 5, Tailwind and shadcn-svelte, Drizzle and PostgreSQL,
 Better Auth (Pocket ID sign-in and the MCP OAuth server), the MCP TypeScript SDK v2, and Vitest.
@@ -45,16 +49,16 @@ Better Auth tables live in `src/lib/server/db/auth-schema.ts`, generated with `n
 
 ## Environment Variables
 
-| Variable                   | Required | Purpose                                                                                                            |
-| -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`             | Yes      | PostgreSQL connection string                                                                                       |
-| `ORIGIN`                   | Yes      | Public URL of the app, e.g. `https://portfolios.example.com`; also needed at build time (SvelteKit `paths.origin`) |
-| `BETTER_AUTH_SECRET`       | Yes      | Random secret for sessions (`openssl rand -base64 32`)                                                             |
-| `POCKET_ID_ISSUER`         | Yes      | Pocket ID base URL, e.g. `https://id.example.com`                                                                  |
-| `POCKET_ID_CLIENT_ID`      | Yes      | OIDC client ID from Pocket ID                                                                                      |
-| `POCKET_ID_CLIENT_SECRET`  | Yes      | OIDC client secret from Pocket ID                                                                                  |
-| `MASSIVE_API_KEY`          | Yes      | Massive API key for prices, corporate actions, and ticker data                                                     |
-| `REFRESH_INTERVAL_MINUTES` | No       | Minutes between market-data refresh runs (default `10`)                                                            |
+| Variable                   | Required | Purpose                                                                                                                   |
+| -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`             | Yes      | PostgreSQL connection string                                                                                              |
+| `ORIGIN`                   | Yes      | Public URL of the app, e.g. `https://portfolios.example.com`; also needed at build time (SvelteKit `paths.origin`)        |
+| `BETTER_AUTH_SECRET`       | Yes      | Random secret for sessions (`openssl rand -base64 32`)                                                                    |
+| `POCKET_ID_ISSUER`         | Yes      | Pocket ID base URL, e.g. `https://id.example.com`                                                                         |
+| `POCKET_ID_CLIENT_ID`      | Yes      | OIDC client ID from Pocket ID                                                                                             |
+| `POCKET_ID_CLIENT_SECRET`  | Yes      | OIDC client secret from Pocket ID                                                                                         |
+| `MASSIVE_API_KEY`          | Yes      | Massive API key for prices, corporate actions, and ticker data; any plan, including the free Basic; select it in Settings |
+| `REFRESH_INTERVAL_MINUTES` | No       | Minutes between market-data refresh runs (default `10`)                                                                   |
 
 The app refuses to start when a required variable is missing or when Pocket ID's discovery
 document cannot be loaded.
@@ -113,8 +117,8 @@ codex mcp add ai-portfolios --url https://portfolios.example.com/mcp && codex mc
 | `create_portfolio` | Create an empty portfolio                                                                                       |
 | `get_portfolio`    | Holdings with weight, thesis, and exit plan; closed positions with realized P&L; rationale, metrics, rebalances |
 | `submit_portfolio` | Submit the complete target portfolio with a required rationale; new positions need a `thesis` and `exit`        |
-| `get_prices`       | Latest price and previous close, for sizing whole-share positions                                               |
-| `validate_tickers` | Check that tickers are active U.S. stocks or ETFs                                                               |
+| `get_prices`       | Latest close (Basic) or snapshot price (Starter or higher) and previous close, for sizing whole-share positions |
+| `validate_tickers` | Check tickers against the daily list of active U.S.-listed stocks and ETFs                                      |
 | `list_strategies`  | Hosted strategies                                                                                               |
 | `get_strategy`     | Full text of a hosted strategy                                                                                  |
 | `create_strategy`  | Host a new strategy                                                                                             |

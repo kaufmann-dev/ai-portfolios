@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import CopyField from '#lib/components/copy-field.svelte';
+	import MarketDataForm from '#lib/components/market-data-form.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.js';
 	import { buttonVariants } from '#lib/components/ui/button/index.js';
 	import * as Table from '#lib/components/ui/table/index.js';
@@ -18,6 +19,17 @@
 
 <div class="flex flex-col gap-10">
 	<h1 class="text-2xl font-semibold">Settings</h1>
+
+	<section class="flex flex-col gap-4" aria-labelledby="market-data">
+		<div class="flex flex-col gap-1">
+			<h2 id="market-data" class="text-lg font-semibold">Market data</h2>
+			<p class="max-w-prose text-sm text-muted-foreground">
+				Prices, splits, dividends, and the ticker list come from Massive. On Basic, requests are
+				paced to the free limit and the AI sizes positions from the latest close.
+			</p>
+		</div>
+		<MarketDataForm data={data.form} />
+	</section>
 
 	<section class="flex flex-col gap-4" aria-labelledby="mcp">
 		<div class="flex flex-col gap-1">

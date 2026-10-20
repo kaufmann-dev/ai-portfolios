@@ -4,12 +4,16 @@ import type { RequestHandler } from './$types';
 import { auth, MCP_RESOURCE } from '#lib/server/auth.js';
 import { MCP_SCOPES, TOOL_SCOPES } from '#lib/server/mcp/scopes.js';
 import { createMcpServer } from '#lib/server/mcp/tools.js';
+import { getMassivePlan } from '#lib/server/services/settings.js';
 
 /**
  * Serves the 2026-07-28 protocol and, statelessly, 2025-era clients from one tool definition.
- * Each request builds a server exposing only the tools the token's scopes permit.
+ * Each request builds a server exposing only the tools the token's scopes permit, described for the
+ * configured Massive plan.
  */
-const mcpHandler = createMcpHandler(({ authInfo }) => createMcpServer(new Set(authInfo?.scopes)));
+const mcpHandler = createMcpHandler(async ({ authInfo }) =>
+	createMcpServer(new Set(authInfo?.scopes), await getMassivePlan())
+);
 
 type AccessTokenClaims = Parameters<Parameters<typeof requireMcpAuth>[1]>[1];
 

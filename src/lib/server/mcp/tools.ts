@@ -17,19 +17,42 @@ import {
 	updateStrategy,
 	type Strategy
 } from '../services/strategies';
+import type { MassivePlan } from '../services/settings';
 import { getQuotes, validateTickers } from '../services/tickers';
 import type { SeriesPoint } from '../portfolio/valuation';
 
-const INSTRUCTIONS = `Portfolio management server. Each portfolio is a set of whole-share long and short
+const PRICES: Record<MassivePlan, string> = {
+	basic:
+		'Prices are end-of-day: get_prices returns the latest completed close, not intraday prices; ' +
+		'size from it and leave slack, since the fill is at the next close.',
+	starter: 'get_prices returns the latest trade (delayed or real-time, as of priceTime).'
+};
+
+function instructions(plan: MassivePlan): string {
+	return `Portfolio management server. Each portfolio is a set of whole-share long and short
 stock positions valued at daily closing prices (U.S. market, New York time). There is no cash:
 performance is P&L relative to gross exposure, compounded daily.
 
-Typical workflow: list_portfolios -> get_portfolio (holdings, performance, history, pending
-rebalances) -> get_strategy when the prompt names one -> get_prices to size positions ->
-submit_portfolio with the COMPLETE target portfolio. Every holding carries its thesis and exit plan;
-weigh them against what has happened since before holding, resizing, or closing it, and restate them
-only when your reasoning changes. Closed positions show how earlier theses played out. The submission fills at the first market close
-after it is received; submitting again before that close replaces it.`;
+Typical workflow: list_portfolios -> get_portfolio (holdings with last close, performance, history,
+pending rebalances) -> get_strategy when the prompt names one -> get_prices for tickers you are
+adding or resizing -> submit_portfolio with the COMPLETE target portfolio. ${PRICES[plan]}
+Tickers are checked against a daily list of active U.S.-listed stocks and ETFs; submit_portfolio
+checks them too, so use validate_tickers only for symbols you are unsure of.
+
+Every holding carries its thesis and exit plan; weigh them against what has happened since before
+holding, resizing, or closing it, and restate them only when your reasoning changes. Closed
+positions show how earlier theses played out. The submission fills at the first market close after
+it is received; submitting again before that close replaces it.`;
+}
+
+const GET_PRICES: Record<MassivePlan, string> = {
+	basic:
+		'Latest completed close and the close before it for up to 100 tickers (end-of-day data; ' +
+		'priceTime is the close). Use it to size whole-share positions.',
+	starter:
+		'Latest trade price (delayed or real-time per the data plan; priceTime is the trade time) and ' +
+		'previous close for up to 100 tickers. Use it to size whole-share positions.'
+};
 
 function round(value: number | null, digits: number): number | null {
 	return value === null ? null : Number(value.toFixed(digits));
@@ -150,11 +173,11 @@ const tickerList = z
 	.min(1)
 	.max(100);
 
-/** Builds a server exposing only the tools that `scopes` permit. */
-export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
+/** Builds a server exposing only the tools that `scopes` permit, described for the data plan. */
+export function createMcpServer(scopes: ReadonlySet<string>, plan: MassivePlan): McpServer {
 	const server = new McpServer(
 		{ name: 'ai-portfolios', version: '1.0.0' },
-		{ instructions: INSTRUCTIONS }
+		{ instructions: instructions(plan) }
 	);
 	const allowed = (tool: string) => scopes.has(TOOL_SCOPES[tool]);
 
@@ -296,9 +319,7 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 			'get_prices',
 			{
 				title: 'Get prices',
-				description:
-					'Latest available price (may be delayed depending on the data plan) and previous close ' +
-					'for up to 100 tickers. Use it to size whole-share positions.',
+				description: GET_PRICES[plan],
 				inputSchema: z.object({ tickers: tickerList }),
 				annotations: { readOnlyHint: true }
 			},
@@ -310,7 +331,9 @@ export function createMcpServer(scopes: ReadonlySet<string>): McpServer {
 			'validate_tickers',
 			{
 				title: 'Validate tickers',
-				description: 'Checks that tickers are active U.S. stocks or ETFs and returns their names.',
+				description:
+					'Checks tickers against the daily list of active U.S.-listed stocks and ETFs and returns ' +
+					'their names and types. Listings from today appear after the next daily update.',
 				inputSchema: z.object({ tickers: tickerList }),
 				annotations: { readOnlyHint: true }
 			},

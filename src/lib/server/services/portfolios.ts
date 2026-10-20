@@ -403,7 +403,7 @@ export async function submitPortfolio(
 		);
 	}
 
-	const checks = await validateTickers([...seen], now);
+	const checks = await validateTickers([...seen]);
 	const invalid = checks.filter((c) => !c.valid);
 	if (invalid.length) {
 		throw new ServiceError(

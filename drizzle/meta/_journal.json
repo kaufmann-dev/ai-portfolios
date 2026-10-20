@@ -15,6 +15,13 @@
       "when": 1790344049041,
       "tag": "0001_position_thesis",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792512982695,
+      "tag": "0002_massive_plan",
+      "breakpoints": true
     }
   ]
 }

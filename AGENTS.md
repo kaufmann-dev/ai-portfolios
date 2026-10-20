@@ -56,8 +56,13 @@ Do not use frameworks or libraries just because they are installed. Keep optiona
 - Rebalances are unique per portfolio and effective date. A new submission replaces the pending
   one for the same close; a pending rebalance whose close has passed stays until prices arrive.
 - `src/lib/server/jobs/refresh.ts` fetches market-wide grouped closes, splits, and dividends
-  from Massive, one session at a time and in order, and then marks pending rebalances executed.
-  `hooks.server.ts` starts it after running migrations.
+  from Massive, one session at a time and in order, keeps every ticker's latest two closes in
+  `last_closes`, marks pending rebalances executed, and mirrors the listed-ticker list into
+  `tickers` once per trading day. `hooks.server.ts` starts it after running migrations.
+- The Massive plan (`basic` or `starter`) is a Settings value (`services/settings.ts`). On Basic,
+  `massive/client.ts` paces all requests to 5 per minute, and no request path calls Massive:
+  `get_prices` reads `last_closes` and ticker validation reads `tickers`. Starter adds one
+  snapshot request per `get_prices` call. MCP instructions and tool descriptions depend on the plan.
 - `auth` is created by `initAuth()` in the server `init` hook after migrations (plugins seed
   OAuth tables and fetch Pocket ID discovery on creation); never construct it at import time.
 - MCP tool scopes live in `src/lib/server/mcp/scopes.ts`. A token sees only the tools its
