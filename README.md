@@ -128,7 +128,8 @@ Strategies are written and edited on the Strategies page or through the strategy
 
 ## Coolify Deployment
 
-- **Build Pack:** Nixpacks. `nixpacks.toml` runs the pinned pnpm 11 and starts with `node build`.
+- **Build Pack:** Railpack. It installs Node from `engines.node` and the pnpm version from
+  `packageManager`, then starts the `start` script (`node build`); no `railpack.json` is needed.
 - **Base Directory:** `/`
 - **Database:** a Coolify PostgreSQL resource; set its internal URL as `DATABASE_URL`. Migrations
   run automatically when the app starts, so no deployment commands are needed.
