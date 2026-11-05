@@ -30,7 +30,7 @@ Better Auth (Pocket ID sign-in and the MCP OAuth server), the MCP TypeScript SDK
 
 ## Development
 
-Requirements: Node 24 and pnpm 11. For the database, create `ai_portfolios` in the local Podman
+Requirements: Node 26 and pnpm 12. For the database, create `ai_portfolios` in the local Podman
 PostgreSQL container `postgres-sveltekit`.
 
 ```bash
