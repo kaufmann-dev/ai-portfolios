@@ -4,4 +4,5 @@ strictDepBuilds: false
 allowBuilds:
   esbuild: true
 overrides:
+  'minimatch@>=7 <11.0.1': ^11.0.4
   '@esbuild-kit/core-utils>esbuild': ^0.28.1
