@@ -8,7 +8,8 @@ import {
 	getPortfolioView,
 	listPortfolioSummaries,
 	submitPortfolio,
-	type PortfolioView
+	type PortfolioView,
+	type StrategyRef
 } from '../services/portfolios';
 import {
 	createStrategy,
@@ -142,7 +143,7 @@ function portfolioOut(view: PortfolioView, historyLimit: number, closedLimit: nu
 			exit: h.exit
 		})),
 		unfilled: view.unpriced,
-		pendingRebalances: view.pending,
+		pendingRebalances: view.pending.map((r) => ({ ...r, strategy: strategyRefOut(r.strategy) })),
 		closedPositions: view.closed.slice(0, closedLimit).map((c) => ({
 			...c,
 			avgCost: round(c.avgCost, 4),
@@ -152,6 +153,7 @@ function portfolioOut(view: PortfolioView, historyLimit: number, closedLimit: nu
 		// Theses of held positions are on holdings; history keeps only the sizes.
 		recentRebalances: view.history.slice(0, historyLimit).map((r) => ({
 			...r,
+			strategy: strategyRefOut(r.strategy),
 			positions: r.positions.map((p) => ({ ticker: p.ticker, side: p.side, shares: p.shares }))
 		})),
 		weeklyPerformance: weekly(view.series)
@@ -211,8 +213,14 @@ function moverOut(m: Mover & { name: string }) {
 	};
 }
 
+// Strategy versions are for the web UI only: agents always see the current text, unnumbered.
+function strategyRefOut(ref: StrategyRef | null) {
+	return ref && { slug: ref.slug, name: ref.name };
+}
+
 function strategyOut(s: Strategy) {
-	return { slug: s.slug, name: s.name, updatedAt: s.updatedAt.toISOString() };
+	const updatedAt = s.versionCreatedAt > s.updatedAt ? s.versionCreatedAt : s.updatedAt;
+	return { slug: s.slug, name: s.name, updatedAt: updatedAt.toISOString() };
 }
 
 const strategyRef = z.string().min(1).describe('Strategy slug or exact name.');

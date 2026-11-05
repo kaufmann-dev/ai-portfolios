@@ -69,6 +69,9 @@ Do not use frameworks or libraries just because they are installed. Keep optiona
   snapshot request per `get_prices` call. MCP instructions and tool descriptions depend on the plan.
 - `auth` is created by `initAuth()` in the server `init` hook after migrations (plugins seed
   OAuth tables and fetch Pocket ID discovery on creation); never construct it at import time.
+- Strategy text lives in `strategy_versions`; every text change adds the next version, and
+  `rebalances.strategy_version_id` records the version a rebalance was made under. Versions are
+  web-UI only: MCP output and descriptions must never expose them (`strategyRefOut` in `tools.ts`).
 - MCP tool scopes live in `src/lib/server/mcp/scopes.ts`. A token sees only the tools its
   scopes allow, and `/mcp` answers other tool calls with a `403` `insufficient_scope` challenge.
   New tools must be added to `TOOL_SCOPES`.

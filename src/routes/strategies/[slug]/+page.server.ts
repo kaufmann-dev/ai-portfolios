@@ -3,7 +3,12 @@ import { message, superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { strategySchema } from '#lib/schemas.js';
 import { failWithServiceError } from '#lib/server/forms.js';
-import { deleteStrategy, findStrategy, updateStrategy } from '#lib/server/services/strategies.js';
+import {
+	deleteStrategy,
+	findStrategy,
+	listVersions,
+	updateStrategy
+} from '#lib/server/services/strategies.js';
 import type { Actions, PageServerLoad } from './$types';
 
 async function strategyOr404(slug: string) {
@@ -16,6 +21,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const strategy = await strategyOr404(params.slug);
 	return {
 		strategy,
+		versions: await listVersions(strategy.id),
 		form: await superValidate(
 			{ name: strategy.name, slug: strategy.slug, content: strategy.content },
 			zod4(strategySchema)
@@ -28,14 +34,17 @@ export const actions: Actions = {
 		const strategy = await strategyOr404(params.slug);
 		const form = await superValidate(request, zod4(strategySchema));
 		if (!form.valid) return fail(400, { form });
-		let slug: string;
+		let updated: Awaited<ReturnType<typeof updateStrategy>>;
 		try {
-			slug = (await updateStrategy(strategy.id, form.data)).slug;
+			updated = await updateStrategy(strategy.id, form.data);
 		} catch (e) {
 			return failWithServiceError(form, e);
 		}
-		if (slug !== params.slug) redirect(303, `/strategies/${slug}`);
-		return message(form, 'Saved.');
+		if (updated.slug !== params.slug) redirect(303, `/strategies/${updated.slug}`);
+		return message(
+			form,
+			updated.version > strategy.version ? `Saved as v${updated.version}.` : 'Saved.'
+		);
 	},
 	delete: async ({ params }) => {
 		const strategy = await strategyOr404(params.slug);

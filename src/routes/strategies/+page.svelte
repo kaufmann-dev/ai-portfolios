@@ -47,6 +47,7 @@
 				<Table.Row>
 					<Table.Head>Name</Table.Head>
 					<Table.Head>Slug</Table.Head>
+					<Table.Head>Version</Table.Head>
 					<Table.Head>Updated</Table.Head>
 				</Table.Row>
 			</Table.Header>
@@ -62,8 +63,9 @@
 							</a>
 						</Table.Cell>
 						<Table.Cell><code>{strategy.slug}</code></Table.Cell>
+						<Table.Cell>v{strategy.version}</Table.Cell>
 						<Table.Cell class="text-muted-foreground">
-							{formatDateTime(strategy.updatedAt)}
+							{formatDateTime(strategy.versionCreatedAt)}
 						</Table.Cell>
 					</Table.Row>
 				{/each}

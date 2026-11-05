@@ -36,6 +36,27 @@
       "when": 1793876063675,
       "tag": "0004_drop_last_closes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793904847260,
+      "tag": "0005_strategy_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793904851698,
+      "tag": "0006_strategy_v1_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793904923063,
+      "tag": "0007_drop_strategy_content",
+      "breakpoints": true
     }
   ]
 }

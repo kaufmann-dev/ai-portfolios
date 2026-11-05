@@ -2,11 +2,12 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import * as Collapsible from '#lib/components/ui/collapsible/index.js';
 
-	let { text, strategy }: { text: string; strategy: { name: string } | null } = $props();
+	let { text, strategy }: { text: string; strategy: { name: string; version: number } | null } =
+		$props();
 </script>
 
 {#if strategy}
-	<p class="text-sm text-muted-foreground">Strategy: {strategy.name}</p>
+	<p class="text-sm text-muted-foreground">Strategy: {strategy.name} v{strategy.version}</p>
 {/if}
 <Collapsible.Root>
 	<Collapsible.Trigger class="group flex items-center gap-1 text-sm font-medium">

@@ -8,7 +8,8 @@ import {
 	priceBars,
 	rebalancePositions,
 	rebalances,
-	strategies
+	strategies,
+	strategyVersions
 } from '../db/schema';
 import { closeAt, closeTime, effectiveDateFor } from '../market/calendar';
 import { diffOrders } from '../portfolio/trades';
@@ -32,9 +33,11 @@ export interface PortfolioInput {
 	description: string;
 }
 
-interface StrategyRef {
+/** The strategy a rebalance was made under. `version` is for the web UI only, never MCP output. */
+export interface StrategyRef {
 	slug: string;
 	name: string;
+	version: number;
 }
 
 /** A target position with the reasoning recorded for it. */
@@ -186,10 +189,12 @@ async function loadRebalances(portfolioIds: number[]): Promise<Map<number, Rebal
 			status: rebalances.status,
 			rationale: rebalances.rationale,
 			strategySlug: strategies.slug,
-			strategyName: strategies.name
+			strategyName: strategies.name,
+			strategyVersion: strategyVersions.version
 		})
 		.from(rebalances)
-		.leftJoin(strategies, eq(strategies.id, rebalances.strategyId))
+		.leftJoin(strategyVersions, eq(strategyVersions.id, rebalances.strategyVersionId))
+		.leftJoin(strategies, eq(strategies.id, strategyVersions.strategyId))
 		.where(inArray(rebalances.portfolioId, portfolioIds))
 		.orderBy(asc(rebalances.effectiveDate));
 	const positions = rows.length
@@ -213,8 +218,8 @@ async function loadRebalances(portfolioIds: number[]): Promise<Map<number, Rebal
 			status: row.status,
 			rationale: row.rationale,
 			strategy:
-				row.strategySlug && row.strategyName
-					? { slug: row.strategySlug, name: row.strategyName }
+				row.strategySlug && row.strategyName && row.strategyVersion
+					? { slug: row.strategySlug, name: row.strategyName, version: row.strategyVersion }
 					: null,
 			positions: positions
 				.filter((p) => p.rebalanceId === row.id)
@@ -411,11 +416,11 @@ export async function submitPortfolio(
 		);
 	}
 
-	let strategyId: number | null = null;
+	let strategyVersionId: number | null = null;
 	if (input.strategy) {
 		const strategy = await findStrategy(input.strategy);
 		if (!strategy) throw new ServiceError(`Strategy "${input.strategy}" does not exist.`, 404);
-		strategyId = strategy.id;
+		strategyVersionId = strategy.versionId;
 	}
 
 	const effectiveDate = effectiveDateFor(now);
@@ -449,7 +454,13 @@ export async function submitPortfolio(
 
 		const [created] = await tx
 			.insert(rebalances)
-			.values({ portfolioId: portfolio.id, submittedAt: now, effectiveDate, rationale, strategyId })
+			.values({
+				portfolioId: portfolio.id,
+				submittedAt: now,
+				effectiveDate,
+				rationale,
+				strategyVersionId
+			})
 			.returning({ id: rebalances.id });
 		if (positions.length) {
 			await tx

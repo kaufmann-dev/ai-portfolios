@@ -130,7 +130,10 @@ codex mcp add ai-portfolios --url https://portfolios.example.com/mcp && codex mc
 | `create_strategy`   | Host a new strategy                                                                                                                     |
 | `update_strategy`   | Change a strategy's name, slug, or text                                                                                                 |
 
-Strategies are written and edited on the Strategies page or through the strategy tools.
+Strategies are written and edited on the Strategies page or through the strategy tools. Every
+change to a strategy's text saves a new numbered version, and each rebalance records the version it
+was made under. Versions are visible only in the web UI (the strategy page and portfolio history);
+the MCP tools always serve the latest text and never mention versions.
 
 ## Coolify Deployment
 

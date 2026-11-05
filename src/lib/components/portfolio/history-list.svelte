@@ -25,7 +25,7 @@
 							{rebalance.orders.length}
 							{rebalance.orders.length === 1 ? 'order' : 'orders'} · {rebalance.positions.length}
 							{rebalance.positions.length === 1 ? 'position' : 'positions'}
-							{#if rebalance.strategy}· {rebalance.strategy.name}{/if}
+							{#if rebalance.strategy}· {rebalance.strategy.name} v{rebalance.strategy.version}{/if}
 						</span>
 					</Collapsible.Trigger>
 					<Collapsible.Content class="flex flex-col gap-3 pb-4 pl-6">

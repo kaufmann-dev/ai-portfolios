@@ -30,9 +30,23 @@ export const strategies = pgTable('strategies', {
 	id: serial('id').primaryKey(),
 	slug: text('slug').notNull().unique(),
 	name: text('name').notNull(),
-	content: text('content').notNull(),
 	...timestamps
 });
+
+/** Every text of a strategy, numbered from 1; the highest version is the current text. */
+export const strategyVersions = pgTable(
+	'strategy_versions',
+	{
+		id: serial('id').primaryKey(),
+		strategyId: integer('strategy_id')
+			.notNull()
+			.references(() => strategies.id, { onDelete: 'cascade' }),
+		version: integer('version').notNull(),
+		content: text('content').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(t) => [uniqueIndex('strategy_versions_strategy_version_idx').on(t.strategyId, t.version)]
+);
 
 export const portfolios = pgTable('portfolios', {
 	id: serial('id').primaryKey(),
@@ -56,7 +70,10 @@ export const rebalances = pgTable(
 		effectiveDate: date('effective_date').notNull(),
 		status: rebalanceStatus('status').notNull().default('pending'),
 		rationale: text('rationale').notNull(),
-		strategyId: integer('strategy_id').references(() => strategies.id, { onDelete: 'set null' }),
+		/** The strategy text the rebalance was made under. Shown in the web UI only, never over MCP. */
+		strategyVersionId: integer('strategy_version_id').references(() => strategyVersions.id, {
+			onDelete: 'set null'
+		}),
 		executedAt: timestamp('executed_at', { withTimezone: true })
 	},
 	(t) => [
