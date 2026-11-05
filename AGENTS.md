@@ -55,13 +55,17 @@ Do not use frameworks or libraries just because they are installed. Keep optiona
   and form actions are thin callers. Throw `ServiceError` for messages safe to show users and AIs.
 - Rebalances are unique per portfolio and effective date. A new submission replaces the pending
   one for the same close; a pending rebalance whose close has passed stays until prices arrive.
-- `src/lib/server/jobs/refresh.ts` fetches market-wide grouped closes, splits, and dividends
-  from Massive, one session at a time and in order, keeps every ticker's latest two closes in
-  `last_closes`, marks pending rebalances executed, and mirrors the listed-ticker list into
-  `tickers` once per trading day. `hooks.server.ts` starts it after running migrations.
+- `src/lib/server/jobs/refresh.ts` fetches market-wide grouped bars, splits, and dividends
+  from Massive, one session at a time and in order, marks pending rebalances executed, and mirrors
+  the listed-ticker list into `tickers` once per trading day. `hooks.server.ts` starts it after
+  running migrations.
+- `daily_bars` keeps 260 sessions of split-adjusted daily bars for every U.S. ticker. A new
+  session rescales earlier bars for its splits; the refresh backfills missing sessions newest
+  first, unadjusted and rescaled locally, up to 30 per run. `get_prices`, `get_price_history`, and
+  `screen_movers` read it; the calculations are pure functions in `src/lib/server/market/history.ts`.
 - The Massive plan (`basic` or `starter`) is a Settings value (`services/settings.ts`). On Basic,
   `massive/client.ts` paces all requests to 5 per minute, and no request path calls Massive:
-  `get_prices` reads `last_closes` and ticker validation reads `tickers`. Starter adds one
+  `get_prices` reads `daily_bars` and ticker validation reads `tickers`. Starter adds one
   snapshot request per `get_prices` call. MCP instructions and tool descriptions depend on the plan.
 - `auth` is created by `initAuth()` in the server `init` hook after migrations (plugins seed
   OAuth tables and fetch Pocket ID discovery on creation); never construct it at import time.

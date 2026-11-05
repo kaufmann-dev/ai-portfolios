@@ -1,6 +1,6 @@
-import { inArray, max } from 'drizzle-orm';
+import { eq, inArray, max, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { lastCloses, tickers } from '../db/schema';
+import { dailyBars, tickers } from '../db/schema';
 import { closeAt, newYorkDate } from '../market/calendar';
 import { fetchSnapshots, MassiveError, type Snapshot } from '../massive/client';
 import { ServiceError } from './errors';
@@ -53,9 +53,32 @@ export interface Quote {
 
 export type QuoteResult = Quote | { ticker: string; error: string };
 
+/** Each ticker's latest stored close and the close before it. */
+async function latestCloses(symbols: string[]) {
+	const ranked = db
+		.select({
+			ticker: dailyBars.ticker,
+			date: dailyBars.date,
+			close: dailyBars.close,
+			previousClose: sql<
+				number | null
+			>`lag(${dailyBars.close}) over (partition by ${dailyBars.ticker} order by ${dailyBars.date})`.as(
+				'previous_close'
+			),
+			rank: sql<number>`row_number() over (partition by ${dailyBars.ticker} order by ${dailyBars.date} desc)`.as(
+				'rank'
+			)
+		})
+		.from(dailyBars)
+		.where(inArray(dailyBars.ticker, symbols))
+		.as('ranked');
+	return db.select().from(ranked).where(eq(ranked.rank, 1));
+}
+
 /**
  * Latest prices. On the Basic plan they are the stored latest closes; on Starter and higher, one
- * snapshot request, falling back to the latest close for tickers the snapshot lacks.
+ * snapshot request, falling back to the latest close for tickers the snapshot lacks. Previous
+ * closes of stored bars are split-adjusted.
  */
 export async function getQuotes(symbols: string[]): Promise<QuoteResult[]> {
 	const unique = [...new Set(symbols)];
@@ -74,9 +97,7 @@ export async function getQuotes(symbols: string[]): Promise<QuoteResult[]> {
 		}
 	}
 	const missing = unique.filter((t) => !snapshots.has(t));
-	const closes = missing.length
-		? await db.select().from(lastCloses).where(inArray(lastCloses.ticker, missing))
-		: [];
+	const closes = missing.length ? await latestCloses(missing) : [];
 	const closeByTicker = new Map(closes.map((c) => [c.ticker, c]));
 
 	return unique.map((ticker): QuoteResult => {

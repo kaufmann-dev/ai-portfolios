@@ -20,6 +20,10 @@ whether to keep or close it.
   refresh calls Massive: `get_prices` returns the latest close, and tickers are checked against a
   list of active U.S.-listed stocks and ETFs mirrored once per trading day. On **Starter or
   higher**, `get_prices` returns snapshot prices (delayed or real-time) in one request.
+- **Price history** for AI clients: the refresh also keeps a year (260 sessions) of
+  split-adjusted daily bars for every U.S. ticker, about 3 million rows. After the first deploy it
+  backfills 30 sessions per run, newest first, which takes about an hour and a half on Basic.
+  `get_price_history` and `screen_movers` read these bars, so they never call Massive.
 
 Stack: SvelteKit (adapter-node), Svelte 5, Tailwind and shadcn-svelte, Drizzle and PostgreSQL,
 Better Auth (Pocket ID sign-in and the MCP OAuth server), the MCP TypeScript SDK v2, and Vitest.
@@ -95,12 +99,12 @@ other MCP clients connect with just the URL:
   every request. `offline_access` issues rotating refresh tokens.
 - The server speaks MCP 2026-07-28 and, statelessly, the 2025 protocol revisions.
 
-| Scope              | Tools                                                                |
-| ------------------ | -------------------------------------------------------------------- |
-| `portfolios:read`  | `list_portfolios`, `get_portfolio`, `get_prices`, `validate_tickers` |
-| `portfolios:write` | `create_portfolio`, `submit_portfolio`                               |
-| `strategies:read`  | `list_strategies`, `get_strategy`                                    |
-| `strategies:write` | `create_strategy`, `update_strategy`                                 |
+| Scope              | Tools                                                                                                      |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `portfolios:read`  | `list_portfolios`, `get_portfolio`, `get_prices`, `get_price_history`, `screen_movers`, `validate_tickers` |
+| `portfolios:write` | `create_portfolio`, `submit_portfolio`                                                                     |
+| `strategies:read`  | `list_strategies`, `get_strategy`                                                                          |
+| `strategies:write` | `create_strategy`, `update_strategy`                                                                       |
 
 A token only lists the tools its scopes allow. Calling another tool returns `403` with an
 `insufficient_scope` challenge, so the client can ask for more access. Settings lists connected
@@ -111,18 +115,20 @@ claude mcp add -s user --transport http ai-portfolios https://portfolios.example
 codex mcp add ai-portfolios --url https://portfolios.example.com/mcp && codex mcp login ai-portfolios
 ```
 
-| Tool               | Purpose                                                                                                         |
-| ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `list_portfolios`  | Portfolios with performance and pending-rebalance counts                                                        |
-| `create_portfolio` | Create an empty portfolio                                                                                       |
-| `get_portfolio`    | Holdings with weight, thesis, and exit plan; closed positions with realized P&L; rationale, metrics, rebalances |
-| `submit_portfolio` | Submit the complete target portfolio with a required rationale; new positions need a `thesis` and `exit`        |
-| `get_prices`       | Latest close (Basic) or snapshot price (Starter or higher) and previous close, for sizing whole-share positions |
-| `validate_tickers` | Check tickers against the daily list of active U.S.-listed stocks and ETFs                                      |
-| `list_strategies`  | Hosted strategies                                                                                               |
-| `get_strategy`     | Full text of a hosted strategy                                                                                  |
-| `create_strategy`  | Host a new strategy                                                                                             |
-| `update_strategy`  | Change a strategy's name, slug, or text                                                                         |
+| Tool                | Purpose                                                                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `list_portfolios`   | Portfolios with performance and pending-rebalance counts                                                                                |
+| `create_portfolio`  | Create an empty portfolio                                                                                                               |
+| `get_portfolio`     | Holdings with weight, thesis, and exit plan; closed positions with realized P&L; rationale, metrics, rebalances                         |
+| `submit_portfolio`  | Submit the complete target portfolio with a required rationale; new positions need a `thesis` and `exit`                                |
+| `get_prices`        | Latest close (Basic) or snapshot price (Starter or higher) and previous close, for sizing whole-share positions                         |
+| `get_price_history` | Split-adjusted daily bars for up to 20 tickers with 52-week range, 20/50/200-session averages, volatility, and dollar volume            |
+| `screen_movers`     | Every U.S. common stock and ADR whose one- or two-session move relative to SPY (or a sector ETF) was unusually large in recent sessions |
+| `validate_tickers`  | Check tickers against the daily list of active U.S.-listed stocks and ETFs                                                              |
+| `list_strategies`   | Hosted strategies                                                                                                                       |
+| `get_strategy`      | Full text of a hosted strategy                                                                                                          |
+| `create_strategy`   | Host a new strategy                                                                                                                     |
+| `update_strategy`   | Change a strategy's name, slug, or text                                                                                                 |
 
 Strategies are written and edited on the Strategies page or through the strategy tools.
 

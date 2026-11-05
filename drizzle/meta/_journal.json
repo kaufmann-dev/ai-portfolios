@@ -22,6 +22,20 @@
       "when": 1792512982695,
       "tag": "0002_massive_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793876062445,
+      "tag": "0003_daily_bars",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793876063675,
+      "tag": "0004_drop_last_closes",
+      "breakpoints": true
     }
   ]
 }

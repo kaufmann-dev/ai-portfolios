@@ -81,18 +81,42 @@ async function paginate(
 	return results;
 }
 
-/** Unadjusted closes for every U.S. stock on one session. Empty when Massive has no data yet. */
-export async function fetchGroupedCloses(date: string): Promise<Map<string, number>> {
-	const body = await getJson(
-		buildUrl(`/v2/aggs/grouped/locale/us/market/stocks/${date}`, { adjusted: 'false' })
-	);
-	const closes = new Map<string, number>();
+function positive(value: unknown): number | null {
+	return typeof value === 'number' && value > 0 ? value : null;
+}
 
+export interface DailyBar {
+	open: number;
+	high: number;
+	low: number;
+	close: number;
+	volume: number;
+}
+
+/**
+ * Daily bars of every U.S. stock on one session, unadjusted or adjusted for the splits Massive
+ * knows of. Empty when Massive has no data for the session yet.
+ */
+export async function fetchGroupedBars(
+	date: string,
+	adjusted: boolean
+): Promise<Map<string, DailyBar>> {
+	const body = await getJson(
+		buildUrl(`/v2/aggs/grouped/locale/us/market/stocks/${date}`, { adjusted: String(adjusted) })
+	);
+	const bars = new Map<string, DailyBar>();
 	for (const bar of (body.results as Json[] | undefined) ?? []) {
-		if (typeof bar.T === 'string' && typeof bar.c === 'number' && bar.c > 0)
-			closes.set(bar.T, bar.c);
+		const close = positive(bar.c);
+		if (typeof bar.T !== 'string' || close === null) continue;
+		bars.set(bar.T, {
+			open: positive(bar.o) ?? close,
+			high: positive(bar.h) ?? close,
+			low: positive(bar.l) ?? close,
+			close,
+			volume: typeof bar.v === 'number' && bar.v > 0 ? bar.v : 0
+		});
 	}
-	return closes;
+	return bars;
 }
 
 /** Unadjusted close for one ticker on one session, or null. */
@@ -109,16 +133,23 @@ export async function fetchTickerClose(ticker: string, date: string): Promise<nu
 
 export interface SplitEvent {
 	ticker: string;
+	/** The first session that trades at the split-adjusted price. */
+	date: string;
 	splitFrom: number;
 	splitTo: number;
 }
 
-/** Splits and stock dividends that take effect before the open of `date`. */
-export async function fetchSplits(date: string): Promise<SplitEvent[]> {
-	const rows = await paginate('/stocks/v1/splits', { execution_date: date, limit: PAGE_LIMIT });
+/** Splits and stock dividends that take effect before the open of a session from `from` to `to`. */
+export async function fetchSplits(from: string, to = from): Promise<SplitEvent[]> {
+	const rows = await paginate('/stocks/v1/splits', {
+		'execution_date.gte': from,
+		'execution_date.lte': to,
+		limit: PAGE_LIMIT
+	});
 
 	return rows.flatMap((row) =>
 		typeof row.ticker === 'string' &&
+		typeof row.execution_date === 'string' &&
 		typeof row.split_from === 'number' &&
 		typeof row.split_to === 'number' &&
 		row.split_from > 0 &&
@@ -126,6 +157,7 @@ export async function fetchSplits(date: string): Promise<SplitEvent[]> {
 			? [
 					{
 						ticker: row.ticker,
+						date: row.execution_date,
 						splitFrom: row.split_from,
 						splitTo: row.split_to
 					}
@@ -186,10 +218,6 @@ export interface Snapshot {
 	price: number;
 	previousClose: number | null;
 	updatedAt: string | null;
-}
-
-function positive(value: unknown): number | null {
-	return typeof value === 'number' && value > 0 ? value : null;
 }
 
 /** Snapshots of the given tickers in one request (Starter plan and higher). Unknown tickers are absent. */

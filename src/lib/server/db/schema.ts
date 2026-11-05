@@ -3,6 +3,7 @@ import {
 	boolean,
 	check,
 	date,
+	doublePrecision,
 	index,
 	integer,
 	numeric,
@@ -126,14 +127,23 @@ export const tickers = pgTable('tickers', {
 	syncedAt: timestamp('synced_at', { withTimezone: true }).notNull()
 });
 
-/** The latest two unadjusted closes of every U.S. ticker, from the market-wide grouped bars. */
-export const lastCloses = pgTable('last_closes', {
-	ticker: text('ticker').primaryKey(),
-	date: date('date').notNull(),
-	close: numeric('close', { precision: 18, scale: 6, mode: 'number' }).notNull(),
-	previousDate: date('previous_date'),
-	previousClose: numeric('previous_close', { precision: 18, scale: 6, mode: 'number' })
-});
+/**
+ * Daily bars of every U.S. ticker over the last year of sessions, from the market-wide grouped
+ * bars. Split-adjusted: earlier bars are rescaled when a split takes effect.
+ */
+export const dailyBars = pgTable(
+	'daily_bars',
+	{
+		ticker: text('ticker').notNull(),
+		date: date('date').notNull(),
+		open: doublePrecision('open').notNull(),
+		high: doublePrecision('high').notNull(),
+		low: doublePrecision('low').notNull(),
+		close: doublePrecision('close').notNull(),
+		volume: doublePrecision('volume').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.ticker, t.date] }), index('daily_bars_date_idx').on(t.date)]
+);
 
 export const massivePlan = pgEnum('massive_plan', ['basic', 'starter']);
 

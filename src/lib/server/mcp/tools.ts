@@ -19,6 +19,8 @@ import {
 } from '../services/strategies';
 import type { MassivePlan } from '../services/settings';
 import { getQuotes, validateTickers } from '../services/tickers';
+import { getPriceHistory, screenMovers, type PriceHistory } from '../services/history';
+import type { Mover } from '../market/history';
 import type { SeriesPoint } from '../portfolio/valuation';
 
 const PRICES: Record<MassivePlan, string> = {
@@ -37,6 +39,9 @@ performance is P&L relative to gross exposure, compounded daily.
 Typical workflow: list_portfolios -> get_portfolio (holdings with last close, performance, history,
 pending rebalances) -> get_strategy when the prompt names one -> get_prices for tickers you are
 adding or resizing -> submit_portfolio with the COMPLETE target portfolio. ${PRICES[plan]}
+get_price_history (split-adjusted daily bars, 52-week range, averages, volatility) and
+screen_movers (unusually large recent moves across all U.S. stocks) use end-of-day data through
+the latest completed close.
 Tickers are checked against a daily list of active U.S.-listed stocks and ETFs; submit_portfolio
 checks them too, so use validate_tickers only for symbols you are unsure of.
 
@@ -150,6 +155,59 @@ function portfolioOut(view: PortfolioView, historyLimit: number, closedLimit: nu
 			positions: r.positions.map((p) => ({ ticker: p.ticker, side: p.side, shares: p.shares }))
 		})),
 		weeklyPerformance: weekly(view.series)
+	};
+}
+
+const price = (value: number) => round(value, 4);
+const pct = (value: number | null) => round(value, 6);
+
+function historyOut(h: PriceHistory) {
+	if ('error' in h) return h;
+	return {
+		ticker: h.ticker,
+		asOf: h.asOf,
+		historyFrom: h.historyFrom,
+		sessions: h.sessions,
+		close: price(h.close),
+		change: pct(h.change),
+		high52w: price(h.high52w),
+		high52wDate: h.high52wDate,
+		low52w: price(h.low52w),
+		low52wDate: h.low52wDate,
+		fromHigh52w: pct(h.fromHigh52w),
+		sma20: h.sma20 === null ? null : price(h.sma20),
+		sma50: h.sma50 === null ? null : price(h.sma50),
+		sma200: h.sma200 === null ? null : price(h.sma200),
+		volatility20: pct(h.volatility20),
+		volatility60: pct(h.volatility60),
+		avgDollarVolume20: Math.round(h.avgDollarVolume20),
+		bars: h.bars.map((b) => ({
+			date: b.date,
+			open: price(b.open),
+			high: price(b.high),
+			low: price(b.low),
+			close: price(b.close),
+			volume: Math.round(b.volume)
+		}))
+	};
+}
+
+function moverOut(m: Mover & { name: string }) {
+	return {
+		ticker: m.ticker,
+		name: m.name,
+		eventDate: m.eventDate,
+		eventSessions: m.eventSessions,
+		move: pct(m.move),
+		excess: pct(m.excess),
+		sigma: round(m.sigma, 2),
+		dailyVolatility: pct(m.dailyVolatility),
+		eventHigh: price(m.eventHigh),
+		eventLow: price(m.eventLow),
+		eventClose: price(m.eventClose),
+		close: price(m.close),
+		sinceEvent: pct(m.sinceEvent),
+		avgDollarVolume20: Math.round(m.avgDollarVolume20)
 	};
 }
 
@@ -325,6 +383,99 @@ export function createMcpServer(scopes: ReadonlySet<string>, plan: MassivePlan):
 				annotations: { readOnlyHint: true }
 			},
 			({ tickers }) => guard(() => getQuotes(tickers))
+		);
+
+	if (allowed('get_price_history'))
+		server.registerTool(
+			'get_price_history',
+			{
+				title: 'Get price history',
+				description:
+					'Split-adjusted daily bars (open, high, low, close, volume) for up to 20 U.S. stocks or ' +
+					'ETFs, from the last 260 sessions through the latest completed close (the current ' +
+					'session is not included). Each ticker also gets its 52-week high and low with their ' +
+					'dates, its distance from the 52-week high, 20-, 50-, and 200-session average closes, ' +
+					'the standard deviation of daily returns over 20 and 60 sessions, and its average ' +
+					'daily dollar volume over 20 sessions. historyFrom shows how far back the data goes. ' +
+					'Request SPY or a sector ETF alongside to measure relative moves.',
+				inputSchema: z.object({
+					tickers: tickerList.max(20),
+					sessions: z
+						.number()
+						.int()
+						.min(0)
+						.max(260)
+						.default(20)
+						.describe('How many of the latest daily bars to include; 0 returns the summary only.')
+				}),
+				annotations: { readOnlyHint: true }
+			},
+			({ tickers, sessions }) =>
+				guard(async () => (await getPriceHistory(tickers, sessions)).map(historyOut))
+		);
+
+	if (allowed('screen_movers'))
+		server.registerTool(
+			'screen_movers',
+			{
+				title: 'Screen movers',
+				description:
+					'Screens every U.S.-listed common stock and ADR for unusually large moves in recent ' +
+					'sessions, from end-of-day data through the latest completed close (the current ' +
+					'session is not included). A move is a one- or two-session return in excess of the ' +
+					"benchmark's, measured in standard deviations of the stock's daily excess returns " +
+					'over the 60 sessions before the window. Each stock is listed once, with its largest ' +
+					'qualifying move, strongest first: the event date and sessions, the price move and ' +
+					'excess return, the event high, low, and close, the latest close and the move since, ' +
+					'and average daily dollar volume. Finding why a stock moved, and how it moved against ' +
+					'its own sector (get_price_history with the sector ETF), is up to you.',
+				inputSchema: z.object({
+					sessions: z
+						.number()
+						.int()
+						.min(1)
+						.max(20)
+						.default(10)
+						.describe('Only moves that ended within this many of the latest sessions.'),
+					min_sigma: z
+						.number()
+						.min(1)
+						.max(20)
+						.default(2)
+						.describe('Smallest move to list, in standard deviations.'),
+					direction: z.enum(['up', 'down', 'both']).default('both'),
+					benchmark: z
+						.string()
+						.trim()
+						.transform((t) => t.toUpperCase())
+						.pipe(z.string().regex(TICKER_PATTERN))
+						.default('SPY')
+						.describe(
+							'The ETF moves are measured against: SPY, or a sector ETF to screen one sector.'
+						),
+					min_price: z.number().min(0).default(5).describe('Smallest latest close.'),
+					min_dollar_volume: z
+						.number()
+						.min(0)
+						.default(10_000_000)
+						.describe('Smallest average daily dollar volume over the last 20 sessions.'),
+					limit: z.number().int().min(1).max(200).default(50)
+				}),
+				annotations: { readOnlyHint: true }
+			},
+			(input) =>
+				guard(async () => {
+					const result = await screenMovers({
+						sessions: input.sessions,
+						minSigma: input.min_sigma,
+						direction: input.direction,
+						benchmark: input.benchmark,
+						minPrice: input.min_price,
+						minDollarVolume: input.min_dollar_volume,
+						limit: input.limit
+					});
+					return { ...result, movers: result.movers.map(moverOut) };
+				})
 		);
 
 	if (allowed('validate_tickers'))

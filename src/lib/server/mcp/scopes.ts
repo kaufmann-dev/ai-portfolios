@@ -12,6 +12,8 @@ export const TOOL_SCOPES: Record<string, McpScope> = {
 	list_portfolios: 'portfolios:read',
 	get_portfolio: 'portfolios:read',
 	get_prices: 'portfolios:read',
+	get_price_history: 'portfolios:read',
+	screen_movers: 'portfolios:read',
 	validate_tickers: 'portfolios:read',
 	create_portfolio: 'portfolios:write',
 	submit_portfolio: 'portfolios:write',

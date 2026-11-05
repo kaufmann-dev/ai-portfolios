@@ -1,13 +1,14 @@
 /**
  * Fetches closing prices and corporate actions for every tracked ticker, one trading session at a
- * time, keeps the latest closes of every U.S. ticker, marks pending rebalances whose close now has
- * prices as executed, and mirrors the list of listed tickers once per trading day. Idempotent.
+ * time, keeps a year of split-adjusted daily bars of every U.S. ticker, marks pending rebalances
+ * whose close now has prices as executed, and mirrors the list of listed tickers once per trading
+ * day. Idempotent.
  */
 import { and, eq, inArray, lt, lte, max, min, sql } from 'drizzle-orm';
 import { db, type Tx } from '../db';
 import {
 	corporateActions,
-	lastCloses,
+	dailyBars,
 	marketSessions,
 	priceBars,
 	rebalancePositions,
@@ -15,6 +16,7 @@ import {
 	tickers
 } from '../db/schema';
 import {
+	addDays,
 	closeAt,
 	lastCompletedSession,
 	nextTradingDay,
@@ -22,11 +24,12 @@ import {
 } from '../market/calendar';
 import {
 	fetchDividends,
-	fetchGroupedCloses,
+	fetchGroupedBars,
 	fetchSplits,
 	fetchTickerClose,
 	fetchTickerList,
-	MassiveError
+	MassiveError,
+	type DailyBar
 } from '../massive/client';
 
 /** Massive's daily bars settle shortly after the close. */
@@ -35,6 +38,10 @@ const SETTLE_MS = 30 * 60_000;
 const CLOSURE_MS = 36 * 3_600_000;
 /** Rows per insert statement, well below PostgreSQL's parameter limit. */
 const CHUNK = 1000;
+/** Sessions of daily bars kept for price history and screens: a year plus a margin. */
+const HISTORY_SESSIONS = 260;
+/** Missing history sessions fetched per run, so a first backfill does not hold up other work. */
+const BACKFILL_PER_RUN = 30;
 
 let running: Promise<void> | null = null;
 
@@ -50,6 +57,7 @@ async function run(now: Date): Promise<void> {
 		await fetchMissingSessions(now);
 		await markExecuted(now);
 		await syncTickers(now);
+		await backfillHistory();
 	} catch (error) {
 		if (error instanceof MassiveError && error.transient) {
 			console.warn(`[refresh] deferred: ${error.message}`);
@@ -59,10 +67,10 @@ async function run(now: Date): Promise<void> {
 	}
 }
 
-/** Market-wide closes of a session, or null while the plan does not serve that session yet. */
-async function groupedCloses(date: string): Promise<Map<string, number> | null> {
+/** Market-wide bars of a session, or null while the plan does not serve that session yet. */
+async function groupedBars(date: string, adjusted: boolean): Promise<Map<string, DailyBar> | null> {
 	try {
-		return await fetchGroupedCloses(date);
+		return await fetchGroupedBars(date, adjusted);
 	} catch (error) {
 		if (error instanceof MassiveError && error.status === 403) {
 			console.info(`[refresh] closes for ${date} are not available on the current plan yet`);
@@ -84,49 +92,51 @@ async function fetchMissingSessions(now: Date): Promise<void> {
 		const sinceClose = now.getTime() - closeAt(date).getTime();
 		if (sinceClose < SETTLE_MS) break;
 
-		const closes = await groupedCloses(date);
-		if (closes === null) break; // Sessions must be stored in order.
-		if (closes.size === 0) {
+		// Unadjusted: the stored closes value positions at the prices they traded at.
+		const bars = await groupedBars(date, false);
+		if (bars === null) break; // Sessions must be stored in order.
+		if (bars.size === 0) {
 			if (sinceClose < CLOSURE_MS) break; // Not published yet.
 			await recordClosure(date);
 			continue;
 		}
-		await storeSession(date, closes);
+		await storeSession(date, bars);
 	}
-	await fillLastCloses();
 }
 
-/** Loads the newest stored session into `last_closes` when it lags, e.g. after a gap. */
-async function fillLastCloses(): Promise<void> {
-	const [{ latest }] = await db
-		.select({ latest: max(marketSessions.date) })
-		.from(marketSessions)
-		.where(eq(marketSessions.hadData, true));
-	const [{ stored }] = await db.select({ stored: max(lastCloses.date) }).from(lastCloses);
-	if (!latest || (stored && stored >= latest)) return;
-
-	const closes = await groupedCloses(latest);
-	if (closes?.size) await db.transaction((tx) => upsertLastCloses(tx, latest, closes));
-}
-
-/** Records a session's closes, keeping each ticker's earlier close as its previous one. */
-async function upsertLastCloses(tx: Tx, date: string, closes: Map<string, number>): Promise<void> {
-	const rows = [...closes].map(([ticker, close]) => ({ ticker, date, close }));
+async function insertDailyBars(tx: Tx, date: string, bars: Map<string, DailyBar>): Promise<void> {
+	const rows = [...bars].map(([ticker, bar]) => ({ ticker, date, ...bar }));
 	for (let i = 0; i < rows.length; i += CHUNK) {
 		await tx
-			.insert(lastCloses)
+			.insert(dailyBars)
 			.values(rows.slice(i, i + CHUNK))
-			.onConflictDoUpdate({
-				target: lastCloses.ticker,
-				set: {
-					date: sql`excluded.date`,
-					close: sql`excluded.close`,
-					previousDate: sql`case when excluded.date > last_closes.date then last_closes.date else last_closes.previous_date end`,
-					previousClose: sql`case when excluded.date > last_closes.date then last_closes.close else last_closes.previous_close end`
-				},
-				setWhere: sql`excluded.date >= last_closes.date`
-			});
+			.onConflictDoNothing();
 	}
+}
+
+/** A bar from before a split, in post-split shares (`ratio` new shares per old share). */
+function rescale(bar: DailyBar, ratio: number): DailyBar {
+	return {
+		open: bar.open / ratio,
+		high: bar.high / ratio,
+		low: bar.low / ratio,
+		close: bar.close / ratio,
+		volume: bar.volume * ratio
+	};
+}
+
+/** Rescales a ticker's earlier daily bars for a split that takes effect before the open of `date`. */
+async function rescaleHistory(tx: Tx, ticker: string, date: string, ratio: number): Promise<void> {
+	await tx
+		.update(dailyBars)
+		.set({
+			open: sql`${dailyBars.open} / ${ratio}`,
+			high: sql`${dailyBars.high} / ${ratio}`,
+			low: sql`${dailyBars.low} / ${ratio}`,
+			close: sql`${dailyBars.close} / ${ratio}`,
+			volume: sql`${dailyBars.volume} * ${ratio}`
+		})
+		.where(and(eq(dailyBars.ticker, ticker), lt(dailyBars.date, date)));
 }
 
 async function trackedTickers(date: string): Promise<string[]> {
@@ -138,14 +148,14 @@ async function trackedTickers(date: string): Promise<string[]> {
 	return rows.map((r) => r.ticker);
 }
 
-async function storeSession(date: string, closes: Map<string, number>): Promise<void> {
+async function storeSession(date: string, sessionBars: Map<string, DailyBar>): Promise<void> {
 	const tickers = await trackedTickers(date);
 	const tracked = new Set(tickers);
 	const [splits, dividends] = await Promise.all([fetchSplits(date), fetchDividends(date)]);
 
 	const bars: { ticker: string; date: string; close: number }[] = [];
 	for (const ticker of tickers) {
-		let close = closes.get(ticker) ?? null;
+		let close = sessionBars.get(ticker)?.close ?? null;
 		if (close === null) {
 			try {
 				close = await fetchTickerClose(ticker, date);
@@ -157,7 +167,7 @@ async function storeSession(date: string, closes: Map<string, number>): Promise<
 	}
 
 	const splitByTicker = new Map<string, { splitFrom: number; splitTo: number }>();
-	for (const s of splits.filter((s) => tracked.has(s.ticker))) {
+	for (const s of splits) {
 		const prior = splitByTicker.get(s.ticker) ?? { splitFrom: 1, splitTo: 1 };
 		splitByTicker.set(s.ticker, {
 			splitFrom: prior.splitFrom * s.splitFrom,
@@ -169,14 +179,16 @@ async function storeSession(date: string, closes: Map<string, number>): Promise<
 		cashByTicker.set(d.ticker, (cashByTicker.get(d.ticker) ?? 0) + d.cashAmount);
 	}
 	const actions = [
-		...[...splitByTicker].map(([ticker, s]) => ({
-			ticker,
-			date,
-			kind: 'split' as const,
-			splitFrom: s.splitFrom,
-			splitTo: s.splitTo,
-			cashAmount: null
-		})),
+		...[...splitByTicker]
+			.filter(([ticker]) => tracked.has(ticker))
+			.map(([ticker, s]) => ({
+				ticker,
+				date,
+				kind: 'split' as const,
+				splitFrom: s.splitFrom,
+				splitTo: s.splitTo,
+				cashAmount: null
+			})),
 		...[...cashByTicker].map(([ticker, cashAmount]) => ({
 			ticker,
 			date,
@@ -198,11 +210,55 @@ async function storeSession(date: string, closes: Map<string, number>): Promise<
 				});
 		}
 		if (actions.length) await tx.insert(corporateActions).values(actions).onConflictDoNothing();
-		await upsertLastCloses(tx, date, closes);
+		for (const [ticker, s] of splitByTicker) {
+			await rescaleHistory(tx, ticker, date, s.splitTo / s.splitFrom);
+		}
+		await insertDailyBars(tx, date, sessionBars);
 		await tx.insert(marketSessions).values({ date, hadData: true }).onConflictDoNothing();
 	});
 	console.info(
 		`[refresh] stored ${date}: ${bars.length} closes, ${actions.length} corporate actions`
+	);
+}
+
+/**
+ * Fills the daily-bar history to the last HISTORY_SESSIONS stored sessions, newest first, and drops
+ * older bars. Backfilled sessions are fetched unadjusted and rescaled here for the splits through
+ * the latest stored session; storeSession rescales every stored bar for later splits.
+ */
+async function backfillHistory(): Promise<void> {
+	const [{ latest }] = await db
+		.select({ latest: max(marketSessions.date) })
+		.from(marketSessions)
+		.where(eq(marketSessions.hadData, true));
+	if (!latest) return;
+	const sessions = tradingDaysBetween(addDays(latest, -400), latest).slice(-HISTORY_SESSIONS);
+	await db.delete(dailyBars).where(lt(dailyBars.date, sessions[0]));
+
+	const stored = await db.execute<{ date: string }>(sql`
+		select d::text as date from unnest(${`{${sessions.join(',')}}`}::date[]) as d
+		where exists (select 1 from ${dailyBars} where ${dailyBars.date} = d)`);
+	const closures = await db
+		.select({ date: marketSessions.date })
+		.from(marketSessions)
+		.where(eq(marketSessions.hadData, false));
+	const skip = new Set([...stored.map((r) => r.date), ...closures.map((c) => c.date)]);
+	const missing = sessions.filter((d) => !skip.has(d)).reverse();
+	if (!missing.length) return;
+
+	const splits = await fetchSplits(addDays(sessions[0], 1), latest);
+	for (const date of missing.slice(0, BACKFILL_PER_RUN)) {
+		const bars = await groupedBars(date, false);
+		if (bars === null) break;
+		if (bars.size === 0) continue;
+		for (const split of splits) {
+			const bar = split.date > date ? bars.get(split.ticker) : undefined;
+			if (bar) bars.set(split.ticker, rescale(bar, split.splitTo / split.splitFrom));
+		}
+		await db.transaction((tx) => insertDailyBars(tx, date, bars));
+	}
+	console.info(
+		`[refresh] price history: fetched up to ${BACKFILL_PER_RUN} of ${missing.length} missing sessions`
 	);
 }
 
