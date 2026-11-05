@@ -1,11 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-	<style>
-		svg { fill: #000000; }
-		@media (prefers-color-scheme: dark) { svg { fill: #ffffff; } }
-	</style>
-	<title>AI Portfolios</title>
-	<path d="M9 2.5C9.6 6.9 11.1 8.4 15.5 9C11.1 9.6 9.6 11.1 9 15.5C8.4 11.1 6.9 9.6 2.5 9C6.9 8.4 8.4 6.9 9 2.5Z" />
-	<rect x="2.5" y="20" width="7" height="9.5" />
-	<rect x="12.5" y="13" width="7" height="16.5" />
-	<rect x="22.5" y="6" width="7" height="23.5" />
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><title>AI Portfolios</title><defs><linearGradient id="g" x1="3" y1="3" x2="29" y2="29" gradientUnits="userSpaceOnUse"><stop class="g-a"/><stop class="g-b" offset="1"/></linearGradient></defs><style>.g-a{stop-color:#b68103}.g-b{stop-color:#677005}@media (prefers-color-scheme:dark){.g-a{stop-color:#fabb41}.g-b{stop-color:#9ca81f}}</style><g stroke-width="3" stroke-linecap="butt" stroke-linejoin="miter"><path d="M8 2.5C8.5 6.3 9.9 7.7 13.5 8.2C9.9 8.7 8.5 10.1 8 13.9C7.5 10.1 6.1 8.7 2.5 8.2C6.1 7.7 7.5 6.3 8 2.5Z" fill="url(#g)"/><rect x="3" y="18" width="6" height="11" fill="url(#g)"/><rect x="13" y="11.5" width="6" height="17.5" fill="url(#g)"/><rect x="23" y="5" width="6" height="24" fill="url(#g)"/></g></svg>
